@@ -4,7 +4,9 @@ const errors = [
   { code: "200", meaning: "OK – Success", color: "text-green-400" },
   { code: "400", meaning: "Bad Request – Invalid parameters", color: "text-yellow-400" },
   { code: "401", meaning: "Unauthorized – Invalid API Key", color: "text-yellow-400" },
+  { code: "402", meaning: "Payment Required – Insufficient credits", color: "text-yellow-400" },
   { code: "429", meaning: "Too Many Requests – Rate limit exceeded", color: "text-red-400" },
+  { code: "503", meaning: "Service Unavailable – Maintenance mode", color: "text-red-400" },
   { code: "500", meaning: "Internal Server Error", color: "text-red-400" },
 ];
 
