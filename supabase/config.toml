@@ -1,0 +1,22 @@
+project_id = "vtudqqjmjcsgbpicjrtg"
+
+[functions.generate-image]
+verify_jwt = false
+
+[functions.create-api-key]
+verify_jwt = false
+
+[functions.manage-provider-keys]
+verify_jwt = false
+
+[functions.scheduled-profile-sync]
+verify_jwt = false
+
+[functions.test-provider-connection]
+verify_jwt = false
+
+[functions.refresh-analytics-cache]
+verify_jwt = false
+
+[functions.assign-external-admin]
+verify_jwt = false

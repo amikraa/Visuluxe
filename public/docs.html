@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Image Platform - API Documentation</title>
+  <meta name="description" content="AI Image Platform API Documentation - Integrate state-of-the-art image generation into your applications." />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --background: hsl(222, 47%, 7%);
+      --foreground: hsl(210, 40%, 98%);
+      --card: hsl(220, 40%, 10%);
+      --card-foreground: hsl(210, 40%, 98%);
+      --primary: hsl(221, 90%, 50%);
+      --primary-foreground: hsl(210, 40%, 98%);
+      --secondary: hsl(217, 33%, 17%);
+      --secondary-foreground: hsl(210, 40%, 98%);
+      --muted: hsl(217, 33%, 17%);
+      --muted-foreground: hsl(215, 20%, 65%);
+      --border: hsl(217, 33%, 20%);
+      --surface: hsl(220, 35%, 12%);
+      --code-bg: hsl(220, 40%, 5%);
+      --code-header: hsl(220, 35%, 9%);
+      --radius: 0.5rem;
+      --syntax-keyword: hsl(286, 60%, 67%);
+      --syntax-string: hsl(95, 38%, 62%);
+      --syntax-function: hsl(207, 82%, 66%);
+      --syntax-number: hsl(29, 54%, 61%);
+    }
+
+    body {
+      background: var(--background);
+      color: var(--foreground);
+      font-family: 'Space Grotesk', sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    code { font-family: 'Fira Code', monospace; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--background); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: hsl(217, 33%, 30%); }
+
+    /* ===== HEADER ===== */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: hsla(222, 47%, 7%, 0.9);
+      backdrop-filter: blur(12px);
+      padding: 0.75rem 1.5rem;
+    }
+    .header-left { display: flex; align-items: center; gap: 2rem; }
+    .header-logo { display: flex; align-items: center; gap: 0.75rem; }
+    .header-logo-icon {
+      width: 2rem; height: 2rem;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--primary);
+      border-radius: 0.5rem;
+      color: var(--primary-foreground);
+    }
+    .header-logo-icon svg { width: 1.25rem; height: 1.25rem; }
+    .header-title { font-size: 1.125rem; font-weight: 700; }
+    .header-nav { display: none; gap: 1.5rem; }
+    .header-nav a { font-size: 0.875rem; font-weight: 500; color: var(--muted-foreground); transition: color 0.2s; }
+    .header-nav a:hover { color: var(--primary); }
+    .header-nav a.active { color: var(--foreground); font-weight: 700; border-bottom: 2px solid var(--primary); padding-bottom: 2px; }
+    .header-right { display: flex; align-items: center; gap: 1rem; }
+    .header-search { position: relative; display: none; width: 100%; max-width: 20rem; }
+    .header-search input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.5rem 1rem 0.5rem 2.5rem;
+      font-size: 0.875rem;
+      color: var(--foreground);
+    }
+    .header-search input::placeholder { color: var(--muted-foreground); }
+    .header-search input:focus { outline: none; border-color: var(--primary); }
+    .header-search svg { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--muted-foreground); width: 1.25rem; height: 1.25rem; }
+    .header-search-shortcut {
+      position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+      background: var(--secondary); border: 1px solid var(--border);
+      padding: 0.125rem 0.375rem; border-radius: 0.25rem;
+      font-size: 0.75rem; color: var(--muted-foreground);
+    }
+    .header-status {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.375rem 0.75rem; border-radius: 9999px;
+      background: var(--surface); border: 1px solid var(--border);
+    }
+    .header-status-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
+    .header-status span { font-size: 0.75rem; color: var(--muted-foreground); }
+    .header-login { display: none; font-size: 0.875rem; font-weight: 500; }
+    .header-login:hover { text-decoration: underline; }
+    .header-cta {
+      background: var(--primary); color: var(--primary-foreground);
+      padding: 0.5rem 1rem; border-radius: 0.5rem;
+      font-size: 0.875rem; font-weight: 700;
+      cursor: pointer; border: none;
+      transition: transform 0.15s;
+    }
+    .header-cta:hover { transform: scale(1.05); }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    @media (min-width: 1024px) {
+      .header { padding: 0.75rem 2.5rem; }
+      .header-nav { display: flex; }
+      .header-search { display: block; }
+      .header-login { display: block; }
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      position: fixed;
+      top: 65px; bottom: 0; left: 0;
+      width: 16rem;
+      display: none;
+      flex-direction: column;
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+      background: hsla(222, 47%, 7%, 0.85);
+      backdrop-filter: blur(12px);
+      padding: 1.5rem;
+      z-index: 40;
+    }
+    .sidebar-group { margin-bottom: 1.5rem; }
+    .sidebar-group-title {
+      padding: 0.5rem;
+      font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--muted-foreground);
+    }
+    .sidebar-link {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.5rem 0.75rem; border-radius: 0.5rem;
+      font-size: 0.875rem; font-weight: 500;
+      color: var(--muted-foreground);
+      transition: all 0.2s;
+    }
+    .sidebar-link:hover { background: var(--secondary); color: var(--foreground); }
+    .sidebar-link.active { background: hsla(221, 90%, 50%, 0.1); color: var(--primary); }
+    .sidebar-link svg { width: 1.25rem; height: 1.25rem; }
+
+    @media (min-width: 1024px) { .sidebar { display: flex; } }
+
+    /* ===== MAIN ===== */
+    .main { flex: 1; padding: 2.5rem 1.5rem; max-width: 64rem; margin: 0 auto; }
+    @media (min-width: 1024px) { .main { margin-left: 16rem; padding: 2.5rem 3rem; } }
+
+    /* ===== BREADCRUMBS ===== */
+    .breadcrumbs {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem;
+      padding-bottom: 1.5rem; margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .breadcrumbs-path { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--muted-foreground); }
+    .breadcrumbs-path .current { font-weight: 500; color: var(--foreground); }
+    .breadcrumbs-path svg { width: 1rem; height: 1rem; }
+    .breadcrumbs-updated { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--muted-foreground); }
+    .breadcrumbs-updated svg { width: 1rem; height: 1rem; }
+
+    /* ===== SECTIONS ===== */
+    section { margin-bottom: 4rem; scroll-margin-top: 6rem; }
+    section.bordered { border-bottom: 1px solid var(--border); padding-bottom: 4rem; }
+
+    .section-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
+    .section-icon {
+      width: 2.5rem; height: 2.5rem;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface); border-radius: 0.5rem;
+      color: var(--primary);
+    }
+    .section-icon svg { width: 1.25rem; height: 1.25rem; }
+    .section-title { font-size: 1.875rem; font-weight: 700; }
+
+    h1 { font-size: 2.25rem; font-weight: 900; letter-spacing: -0.025em; margin-bottom: 1rem; }
+    h3 { font-size: 1.125rem; font-weight: 700; margin-bottom: 1rem; }
+    p.desc { color: var(--muted-foreground); max-width: 48rem; margin-bottom: 2rem; }
+
+    /* ===== HERO ===== */
+    .hero {
+      position: relative;
+      background: linear-gradient(to bottom right, var(--surface), var(--background));
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 2rem;
+      overflow: hidden;
+      margin-bottom: 4rem;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: radial-gradient(var(--border) 1px, transparent 1px);
+      background-size: 20px 20px;
+      opacity: 0.1;
+    }
+    .hero-content { position: relative; z-index: 10; max-width: 48rem; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.25rem 0.75rem; border-radius: 9999px;
+      border: 1px solid hsla(221, 90%, 50%, 0.3);
+      background: hsla(221, 90%, 50%, 0.1);
+      margin-bottom: 1.5rem;
+    }
+    .hero-badge-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--primary); animation: pulse 2s infinite; }
+    .hero-badge span { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary); }
+    .hero h1 { font-size: 2.5rem; line-height: 1.1; }
+    .hero h1 .gradient {
+      background: linear-gradient(to right, var(--primary), hsl(207, 82%, 66%));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p { font-size: 1.125rem; color: var(--muted-foreground); margin-bottom: 2rem; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 1rem; }
+    .hero-btn-primary {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: var(--foreground); color: var(--background);
+      padding: 0.75rem 1.5rem; border-radius: 0.5rem;
+      font-size: 1rem; font-weight: 700;
+      transition: opacity 0.2s;
+    }
+    .hero-btn-primary:hover { opacity: 0.9; }
+    .hero-btn-primary svg { width: 1.25rem; height: 1.25rem; }
+    .hero-btn-secondary {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 0.75rem 1.5rem; border-radius: 0.5rem;
+      font-size: 1rem; font-weight: 700;
+      transition: background 0.2s;
+    }
+    .hero-btn-secondary:hover { background: var(--secondary); }
+    .hero-glow {
+      position: absolute; right: 0; top: 0;
+      width: 33%; height: 100%;
+      background: linear-gradient(to left, hsla(221, 90%, 50%, 0.1), transparent);
+      pointer-events: none;
+    }
+
+    @media (min-width: 768px) {
+      .hero { padding: 3rem; }
+      .hero h1 { font-size: 3rem; }
+    }
+
+    /* ===== FEATURE CARDS ===== */
+    .feature-grid { display: grid; gap: 1.5rem; margin-top: 2rem; }
+    @media (min-width: 768px) { .feature-grid { grid-template-columns: repeat(2, 1fr); } }
+    .feature-card {
+      padding: 1.5rem; border-radius: 0.75rem;
+      border: 1px solid var(--border);
+      background: var(--card);
+      transition: border-color 0.2s;
+    }
+    .feature-card:hover { border-color: hsla(221, 90%, 50%, 0.5); }
+    .feature-card-icon {
+      width: 3rem; height: 3rem;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .feature-card-icon.blue { background: hsla(207, 82%, 66%, 0.1); color: hsl(207, 82%, 66%); }
+    .feature-card-icon.green { background: hsla(142, 70%, 45%, 0.1); color: hsl(142, 70%, 45%); }
+    .feature-card-icon svg { width: 1.5rem; height: 1.5rem; }
+    .feature-card h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .feature-card p { font-size: 0.875rem; color: var(--muted-foreground); }
+
+    /* ===== WARNING BOX ===== */
+    .warning-box {
+      padding: 1rem; border-radius: 0.5rem;
+      border: 1px solid hsla(45, 100%, 50%, 0.2);
+      background: hsla(45, 100%, 50%, 0.05);
+    }
+    .warning-box-inner { display: flex; gap: 0.75rem; }
+    .warning-box svg { width: 1.25rem; height: 1.25rem; color: hsl(45, 100%, 50%); flex-shrink: 0; margin-top: 0.125rem; animation: pulse 2s infinite; }
+    .warning-box h4 { font-weight: 700; color: hsl(45, 100%, 50%); }
+    .warning-box p { font-size: 0.875rem; color: var(--muted-foreground); margin-top: 0.25rem; }
+    .warning-box code { background: var(--surface); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.875rem; }
+
+    /* ===== CODE BLOCKS ===== */
+    .code-block { border: 1px solid var(--border); border-radius: 0.75rem; background: var(--code-bg); overflow: hidden; }
+    .code-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.5rem 1rem;
+      background: var(--code-header);
+      border-bottom: 1px solid var(--border);
+    }
+    .code-header-left { display: flex; align-items: center; gap: 0.75rem; }
+    .code-dots { display: flex; gap: 0.375rem; }
+    .code-dots span { width: 0.75rem; height: 0.75rem; border-radius: 50%; }
+    .code-dots span:nth-child(1) { background: #ff5f56; }
+    .code-dots span:nth-child(2) { background: #ffbd2e; }
+    .code-dots span:nth-child(3) { background: #27c93f; }
+    .code-lang { font-family: 'Fira Code', monospace; font-size: 0.75rem; color: var(--muted-foreground); user-select: none; }
+    .code-status { display: flex; align-items: center; gap: 0.5rem; }
+    .code-status-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: #22c55e; }
+    .code-status span { font-size: 0.75rem; font-weight: 700; color: #22c55e; }
+    .code-copy { background: none; border: none; cursor: pointer; color: var(--muted-foreground); transition: color 0.2s; }
+    .code-copy:hover { color: var(--foreground); }
+    .code-copy svg { width: 1rem; height: 1rem; }
+    .code-body { padding: 0.75rem; overflow-x: auto; }
+    .code-body pre { font-family: 'Fira Code', monospace; font-size: 0.875rem; line-height: 1.35; white-space: pre; margin: 0; }
+    .code-body.scroll-x { overflow-x: auto; overflow-y: hidden; }
+
+    .syntax-keyword { color: var(--syntax-keyword); }
+    .syntax-string { color: var(--syntax-string); }
+    .syntax-func { color: var(--syntax-function); }
+    .syntax-number { color: var(--syntax-number); }
+
+    /* ===== API ENDPOINT ===== */
+    .endpoint {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 1rem;
+      padding: 1rem; border-radius: 0.5rem;
+      background: var(--surface); border: 1px solid var(--border);
+      margin-bottom: 2rem;
+    }
+    .endpoint-inner { display: flex; align-items: center; gap: 0.75rem; font-family: 'Fira Code', monospace; font-size: 0.875rem; }
+    .endpoint-method {
+      padding: 0.25rem 0.625rem; border-radius: 0.25rem;
+      background: hsla(221, 90%, 50%, 0.2);
+      border: 1px solid hsla(221, 90%, 50%, 0.3);
+      font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--primary);
+    }
+    .endpoint-host { color: var(--muted-foreground); }
+
+    /* ===== PARAMS ===== */
+    .params { display: flex; flex-direction: column; gap: 1.5rem; }
+    .param { border-left: 2px solid var(--border); padding-left: 1rem; }
+    .param-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+    .param-name { font-family: 'Fira Code', monospace; font-size: 0.875rem; font-weight: 700; }
+    .param-type { font-size: 0.75rem; color: var(--primary); }
+    .param-req { font-size: 0.75rem; margin-left: auto; }
+    .param-req.required { color: hsl(0, 84%, 60%); font-weight: 500; }
+    .param-req.optional { color: var(--muted-foreground); }
+    .param p { font-size: 0.875rem; color: var(--muted-foreground); }
+
+    /* ===== LANG TABS ===== */
+    .lang-tabs { display: flex; gap: 0.25rem; padding: 0.125rem; background: var(--surface); border: 1px solid var(--border); border-radius: 0.5rem; }
+    .lang-tab { padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 500; color: var(--muted-foreground); cursor: pointer; transition: all 0.2s; background: none; border: none; }
+    .lang-tab:hover { color: var(--foreground); }
+    .lang-tab.active { background: var(--background); color: var(--foreground); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+
+    /* ===== TABLE ===== */
+    .table-wrap { overflow: hidden; border-radius: 0.5rem; border: 1px solid var(--border); background: var(--surface); }
+    table { width: 100%; text-align: left; font-size: 0.875rem; border-collapse: collapse; }
+    thead { background: var(--secondary); }
+    th { padding: 0.75rem 1rem; font-weight: 500; color: var(--muted-foreground); }
+    tbody { background: var(--background); }
+    tbody tr { border-top: 1px solid var(--border); }
+    td { padding: 0.75rem 1rem; }
+    td.mono { font-family: 'Fira Code', monospace; }
+    td.muted { color: var(--muted-foreground); }
+    .text-green { color: hsl(142, 70%, 50%); }
+    .text-yellow { color: hsl(45, 100%, 50%); }
+    .text-red { color: hsl(0, 84%, 60%); }
+
+    /* ===== GRID ===== */
+    .grid-2 { display: grid; gap: 1.5rem; }
+    @media (min-width: 768px) { .grid-2 { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 1280px) { .grid-2-xl { grid-template-columns: repeat(2, 1fr); } }
+    .grid-3 { display: grid; gap: 1rem; }
+    @media (min-width: 768px) { .grid-3 { grid-template-columns: repeat(3, 1fr); } }
+
+    /* ===== PLAN CARDS ===== */
+    .plan-card {
+      position: relative;
+      padding: 1.5rem; border-radius: 0.75rem;
+      background: var(--surface); border: 1px solid var(--border);
+      transition: transform 0.2s;
+    }
+    .plan-card:hover { transform: translateY(-4px); }
+    .plan-card.popular { border-color: hsla(221, 90%, 50%, 0.5); box-shadow: 0 10px 40px -10px hsla(221, 90%, 50%, 0.2); }
+    .plan-badge {
+      position: absolute; top: -0.75rem; left: 1.5rem;
+      padding: 0.125rem 0.75rem; border-radius: 9999px;
+      background: var(--primary); color: var(--primary-foreground);
+      font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .plan-name {
+      display: inline-block;
+      padding: 0.25rem 0.75rem; border-radius: 9999px;
+      font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      background: var(--background);
+    }
+    .plan-name.highlight { color: var(--primary); }
+    .plan-name.muted { color: var(--muted-foreground); }
+    .plan-rate { font-size: 1.5rem; font-weight: 700; margin: 0.5rem 0; }
+    .plan-desc { font-size: 0.875rem; color: var(--muted-foreground); }
+    .plan-features { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.5rem; }
+    .plan-feature { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; }
+    .plan-feature svg { width: 1rem; height: 1rem; color: #22c55e; }
+
+    /* ===== MODEL CARDS ===== */
+    .model-card {
+      position: relative; overflow: hidden;
+      padding: 1.25rem; border-radius: 0.75rem;
+      background: var(--card); border: 1px solid var(--border);
+      transition: all 0.2s;
+    }
+    .model-card:hover { border-color: hsla(221, 90%, 50%, 0.5); box-shadow: 0 20px 40px -20px hsla(221, 90%, 50%, 0.2); }
+    .model-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .model-badge { padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: 700; }
+    .model-badge.green { background: hsla(142, 70%, 45%, 0.1); color: hsl(142, 70%, 45%); }
+    .model-badge.purple { background: hsla(286, 60%, 67%, 0.1); color: hsl(286, 60%, 67%); }
+    .model-badge.orange { background: hsla(29, 100%, 60%, 0.1); color: hsl(29, 100%, 60%); }
+    .model-version { font-size: 0.75rem; color: var(--muted-foreground); }
+    .model-card h3 { font-size: 1.125rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .model-card > p { font-size: 0.875rem; color: var(--muted-foreground); margin-bottom: 1rem; }
+    .model-code { display: inline-block; background: var(--background); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-family: 'Fira Code', monospace; font-size: 0.75rem; }
+
+    /* ===== SECURITY ===== */
+    .security-list { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2.5rem; }
+    .security-item { display: flex; gap: 0.75rem; }
+    .security-item svg { width: 1.25rem; height: 1.25rem; color: #22c55e; flex-shrink: 0; margin-top: 0.125rem; }
+    .security-item strong { color: var(--foreground); }
+    .security-item span { color: var(--muted-foreground); }
+
+    .security-cards { display: grid; gap: 1.5rem; margin-bottom: 2.5rem; }
+    @media (min-width: 768px) { .security-cards { grid-template-columns: repeat(2, 1fr); } }
+    .security-card { display: flex; gap: 1rem; padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--border); background: hsla(220, 35%, 12%, 0.3); }
+    .security-card-icon {
+      width: 2.5rem; height: 2.5rem; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: hsla(221, 90%, 50%, 0.2); border-radius: 0.5rem;
+      color: var(--primary);
+    }
+    .security-card-icon svg { width: 1.25rem; height: 1.25rem; }
+    .security-card h4 { font-weight: 700; margin-bottom: 0.25rem; }
+    .security-card p { font-size: 0.875rem; color: var(--muted-foreground); }
+
+    .security-details {
+      padding: 2rem; border-radius: 1rem;
+      background: linear-gradient(to bottom right, var(--card), var(--background));
+      border: 1px solid var(--border);
+    }
+    .security-details-grid { display: grid; gap: 1.5rem; font-size: 0.875rem; }
+    @media (min-width: 768px) { .security-details-grid { grid-template-columns: repeat(2, 1fr); } }
+    .security-details-list { display: flex; flex-direction: column; gap: 0.75rem; }
+    .security-details-item { display: flex; align-items: flex-start; gap: 0.5rem; color: var(--muted-foreground); }
+    .security-details-item svg { width: 1rem; height: 1rem; color: #22c55e; flex-shrink: 0; margin-top: 0.25rem; }
+    .security-details-item strong { color: var(--foreground); }
+
+    /* ===== FOOTER ===== */
+    .footer { margin-top: 5rem; padding-top: 2rem; border-top: 1px solid var(--border); text-align: center; font-size: 0.875rem; color: var(--muted-foreground); }
+    .footer-links { display: flex; justify-content: center; gap: 1.5rem; margin-top: 1rem; }
+    .footer-links a { transition: color 0.2s; }
+    .footer-links a:hover { color: var(--foreground); }
+
+    /* ===== UTILITIES ===== */
+    .min-w-0 { min-width: 0; }
+    .mt-1 { margin-top: 0.25rem; }
+    .mt-2 { margin-top: 0.5rem; }
+    .mt-4 { margin-top: 1rem; }
+    .mb-4 { margin-bottom: 1rem; }
+    .mb-6 { margin-bottom: 1.5rem; }
+    .gap-10 { gap: 2.5rem; }
+    .gap-12 { gap: 3rem; }
+    .col-span-2 { grid-column: span 2; }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <div class="header-logo">
+        <div class="header-logo-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+        </div>
+        <h2 class="header-title">AI Image Platform</h2>
+      </div>
+      <nav class="header-nav">
+        <a class="active" href="#">Docs</a>
+        <a href="#">Dashboard</a>
+        <a href="#">Support</a>
+      </nav>
+    </div>
+    <div class="header-right">
+      <div class="header-search">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <input type="text" placeholder="Search documentation...">
+        <span class="header-search-shortcut">⌘K</span>
+      </div>
+      <div class="header-status">
+        <span class="header-status-dot"></span>
+        <span>v2.0 (Stable)</span>
+      </div>
+      <a class="header-login" href="#">Login</a>
+      <button class="header-cta">Get API Key</button>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-group">
+      <h3 class="sidebar-group-title">Getting Started</h3>
+      <a class="sidebar-link active" href="#introduction">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/></svg>
+        <span>Introduction</span>
+      </a>
+      <a class="sidebar-link" href="#authentication">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+        <span>Authentication</span>
+      </a>
+    </div>
+    <div class="sidebar-group">
+      <h3 class="sidebar-group-title">Core API</h3>
+      <a class="sidebar-link" href="#text-to-image">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <span>Text to Image</span>
+      </a>
+      <a class="sidebar-link" href="#image-to-image">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+        <span>Image to Image</span>
+      </a>
+      <a class="sidebar-link" href="#models">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        <span>Models</span>
+      </a>
+    </div>
+    <div class="sidebar-group">
+      <h3 class="sidebar-group-title">Resources</h3>
+      <a class="sidebar-link" href="#rate-limits">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        <span>Rate Limits</span>
+      </a>
+      <a class="sidebar-link" href="#errors">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <span>Errors</span>
+      </a>
+      <a class="sidebar-link" href="#security">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        <span>Security</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- Breadcrumbs -->
+    <div class="breadcrumbs">
+      <div class="breadcrumbs-path">
+        <span>Docs</span>
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        <span class="current">Introduction</span>
+      </div>
+      <div class="breadcrumbs-updated">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>Last updated: Dec 24, 2025</span>
+      </div>
+    </div>
+
+    <!-- HERO -->
+    <section class="hero" id="introduction">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span class="hero-badge-dot"></span>
+          <span>v2.0 Now Available</span>
+        </div>
+        <h1>Build with the <br><span class="gradient">AI Image API</span></h1>
+        <p>Integrate state-of-the-art image generation into your applications. Fast, scalable, and developer-friendly REST API for next-gen visual experiences.</p>
+        <div class="hero-actions">
+          <a class="hero-btn-primary" href="#text-to-image">
+            Read Quick Start
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+          </a>
+          <button class="hero-btn-secondary">View Examples</button>
+        </div>
+      </div>
+      <div class="hero-glow"></div>
+    </section>
+
+    <!-- Intro Features -->
+    <section>
+      <h1>Introduction</h1>
+      <p class="desc">Welcome to the AI Image Platform API documentation. Our API empowers developers to integrate state-of-the-art image synthesis into their applications.</p>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-card-icon blue">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <h3>High Performance</h3>
+          <p>Generate 1024x1024 images in under 2 seconds with our optimized GPU clusters.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-card-icon green">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          </div>
+          <h3>Enterprise Secure</h3>
+          <p>SOC2 compliant infrastructure with ephemeral storage and end-to-end encryption.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- AUTHENTICATION -->
+    <section class="bordered" id="authentication">
+      <div class="section-header">
+        <div class="section-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+        </div>
+        <h2 class="section-title">Authentication</h2>
+      </div>
+      <p class="desc">The API uses API keys to authenticate requests. You can view and manage your API keys in the <a href="#" style="color: var(--primary);">Dashboard</a>.</p>
+
+      <div class="grid-2">
+        <div>
+          <div class="warning-box mb-6">
+            <div class="warning-box-inner">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+              <div>
+                <h4>Security Notice</h4>
+                <p>Authentication requests must be made over <code>HTTPS</code>. Calls made over plain HTTP will fail.</p>
+              </div>
+            </div>
+          </div>
+          <p style="font-size: 0.875rem; color: var(--muted-foreground);">Pass your API key in the <code style="background: var(--surface); border: 1px solid var(--border); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-family: 'Fira Code', monospace;">Authorization</code> header with the Bearer scheme.</p>
+        </div>
+        <div class="code-block">
+          <div class="code-header">
+            <div class="code-header-left">
+              <div class="code-dots"><span></span><span></span><span></span></div>
+              <span class="code-lang">Terminal</span>
+            </div>
+          </div>
+          <div class="code-body">
+            <pre><code><span class="syntax-func">curl</span> <span class="syntax-string">"https://api.ai-image.com/v1/models"</span> \
+  -H <span class="syntax-string">"Authorization: Bearer YOUR_API_KEY"</span></code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-block mt-4">
+        <div class="code-header">
+          <div class="code-header-left">
+            <div class="code-dots"><span></span><span></span><span></span></div>
+            <span class="code-lang">Authentication Header</span>
+          </div>
+        </div>
+        <div class="code-body">
+          <pre><code>Authorization: Bearer <span class="syntax-string">sk-proj-123456789...</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- RATE LIMITS -->
+    <section class="bordered" id="rate-limits">
+      <div class="section-header">
+        <div class="section-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <h2 class="section-title">Rate Limits</h2>
+      </div>
+      <p class="desc">API rate limits apply per API key and are based on your subscription plan. Rate limits are enforced to ensure fair usage and stability of the platform.</p>
+
+      <div class="grid-3">
+        <div class="plan-card">
+          <div class="plan-name muted">Hobby</div>
+          <div class="plan-rate">5 req/min</div>
+          <p class="plan-desc">Ideal for testing and prototypes.</p>
+          <div class="plan-features">
+            <div class="plan-feature">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>Standard Models</span>
+            </div>
+          </div>
+        </div>
+        <div class="plan-card popular">
+          <div class="plan-badge">Most Popular</div>
+          <div class="plan-name highlight mt-2">Pro</div>
+          <div class="plan-rate">50 req/min</div>
+          <p class="plan-desc">For production applications.</p>
+          <div class="plan-features">
+            <div class="plan-feature">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>All Models</span>
+            </div>
+            <div class="plan-feature">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>Priority Queue</span>
+            </div>
+          </div>
+        </div>
+        <div class="plan-card">
+          <div class="plan-name muted">Enterprise</div>
+          <div class="plan-rate">Unlimited</div>
+          <p class="plan-desc">For high scale and custom needs.</p>
+          <div class="plan-features">
+            <div class="plan-feature">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>Dedicated GPU</span>
+            </div>
+            <div class="plan-feature">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>Custom Models</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TEXT TO IMAGE -->
+    <section class="bordered" id="text-to-image">
+      <div class="section-header">
+        <div class="section-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        </div>
+        <h2 class="section-title">Text to Image</h2>
+      </div>
+
+      <div class="endpoint">
+        <div class="endpoint-inner">
+          <span class="endpoint-method">POST</span>
+          <span class="endpoint-host">https://api.ai-image.com</span>
+          <span>/v1/images</span>
+        </div>
+      </div>
+
+      <p class="desc">Generate stunning, high-quality visuals from simple text prompts using our state-of-the-art diffusion models.</p>
+
+      <div class="grid-2-xl grid-2">
+        <div>
+          <h3>Parameters</h3>
+          <div class="params">
+            <div class="param">
+              <div class="param-header">
+                <span class="param-name">prompt</span>
+                <span class="param-type">string</span>
+                <span class="param-req required">Required</span>
+              </div>
+              <p>A text description of the desired image(s). The maximum length is 1000 characters.</p>
+            </div>
+            <div class="param">
+              <div class="param-header">
+                <span class="param-name">model</span>
+                <span class="param-type">string</span>
+                <span class="param-req optional">Optional</span>
+              </div>
+              <p>The model to use for generation. Defaults to gen-v2.</p>
+            </div>
+            <div class="param">
+              <div class="param-header">
+                <span class="param-name">size</span>
+                <span class="param-type">string</span>
+                <span class="param-req optional">Optional</span>
+              </div>
+              <p>The size of the generated images. Must be one of 256x256, 512x512, or 1024x1024.</p>
+            </div>
+            <div class="param">
+              <div class="param-header">
+                <span class="param-name">n</span>
+                <span class="param-type">integer</span>
+                <span class="param-req optional">Optional</span>
+              </div>
+              <p>The number of images to generate. Must be between 1 and 4.</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+            <h3 style="margin: 0;">Example Request</h3>
+            <div class="lang-tabs">
+              <button class="lang-tab active">cURL</button>
+              <button class="lang-tab">Python</button>
+              <button class="lang-tab">Node.js</button>
+            </div>
+          </div>
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-header-left">
+                <div class="code-dots"><span></span><span></span><span></span></div>
+                <span class="code-lang">cURL</span>
+              </div>
+            </div>
+            <div class="code-body">
+              <pre><code>curl https://api.ai-platform.com/v1/images/gen \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -d '{
+    "prompt": "A futuristic city",
+    "n": 1,
+    "size": "1024x1024"
+  }'</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-span-2 mt-1">
+          <h3>Response</h3>
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-header-left">
+                <div class="code-dots"><span></span><span></span><span></span></div>
+              </div>
+              <div class="code-status">
+                <span class="code-status-dot"></span>
+                <span>200 OK</span>
+              </div>
+            </div>
+            <div class="code-body">
+              <pre><code>{
+  "id": "gen_abc123xyz",
+  "created": 1698234000,
+  "data": [
+    {
+      "url": "https://cdn.visionary.ai/generations/gen_abc123xyz.png",
+      "seed": 48293
+    }
+  ]
+}</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- IMAGE TO IMAGE -->
+    <section class="bordered" id="image-to-image">
+      <div class="section-header">
+        <div class="section-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+        </div>
+        <h2 class="section-title">Image to Image</h2>
+      </div>
+
+      <p class="desc">Edit, enhance, or transform an existing image using a descriptive text prompt. This feature allows you to keep the core structure of an image while applying creative or stylistic changes through AI.</p>
+
+      <div class="endpoint">
+        <div class="endpoint-inner">
+          <span class="endpoint-method">POST</span>
+          <span class="endpoint-host">https://api.ai-image.com</span>
+          <span>/v1/edits</span>
+        </div>
+      </div>
+
+      <div class="grid-2" style="gap: 3rem;">
+        <div>
+          <h3>Parameters</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Field</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="mono">image</td>
+                  <td class="muted">file</td>
+                  <td class="muted">The image to edit. Must be a valid PNG or JPEG. Max 4MB.</td>
+                </tr>
+                <tr>
+                  <td class="mono">prompt</td>
+                  <td class="muted">string</td>
+                  <td class="muted">Description of the desired output.</td>
+                </tr>
+                <tr>
+                  <td class="mono">strength</td>
+                  <td class="muted">float</td>
+                  <td class="muted">Value between 0.0 and 1.0. Higher values allow more variation.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="min-w-0">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+            <h3 style="margin: 0;">Example Request</h3>
+            <div class="lang-tabs">
+              <button class="lang-tab">cURL</button>
+              <button class="lang-tab active">Python</button>
+              <button class="lang-tab">Node.js</button>
+            </div>
+          </div>
+          <div class="code-block" style="max-width: 100%;">
+            <div class="code-header">
+              <div class="code-header-left">
+                <div class="code-dots"><span></span><span></span><span></span></div>
+                <span class="code-lang">Python</span>
+              </div>
+              <button class="code-copy">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+            </div>
+            <div class="code-body scroll-x">
+              <pre><code><span class="syntax-keyword">import</span> requests
+
+url = <span class="syntax-string">"https://api.ai-image.com/v1/edits"</span>
+files = {<span class="syntax-string">"image"</span>: <span class="syntax-func">open</span>(<span class="syntax-string">"original.png"</span>, <span class="syntax-string">"rb"</span>)}
+
+data = {
+  <span class="syntax-string">"prompt"</span>: <span class="syntax-string">"make it winter season, snow"</span>,
+  <span class="syntax-string">"strength"</span>: <span class="syntax-number">0.7</span>
+}
+
+headers = {<span class="syntax-string">"Authorization"</span>: <span class="syntax-string">"Bearer YOUR_KEY"</span>}
+
+response = requests.<span class="syntax-func">post</span>(
+  url, headers=headers, files=files, data=data
+)</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODELS -->
+    <section class="bordered" id="models">
+      <div class="section-header">
+        <div class="section-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        </div>
+        <h2 class="section-title">Available Models</h2>
+      </div>
+
+      <p class="desc">We support various models optimized for different use cases. You can specify the model using the <code style="background: var(--surface); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.75rem;">model</code> parameter.</p>
+
+      <div class="grid-3">
+        <div class="model-card">
+          <div class="model-header">
+            <span class="model-badge green">Fastest</span>
+            <span class="model-version">v2.1.0</span>
+          </div>
+          <h3>Stable Core</h3>
+          <p>Our fastest model. Best for general purpose generation and quick iterating.</p>
+          <code class="model-code">stable-core-v2</code>
+        </div>
+        <div class="model-card">
+          <div class="model-header">
+            <span class="model-badge purple">High Quality</span>
+            <span class="model-version">v1.5.0</span>
+          </div>
+          <h3>Realism XL</h3>
+          <p>Optimized for photorealistic outputs. Slower generation time but higher fidelity.</p>
+          <code class="model-code">realism-xl-v1</code>
+        </div>
+        <div class="model-card">
+          <div class="model-header">
+            <span class="model-badge orange">Vector</span>
+            <span class="model-version">v1.0.0</span>
+          </div>
+          <h3>Vector Art</h3>
+          <p>Generates clean, flat vector-style illustrations suitable for icons and logos.</p>
+          <code class="model-code">vector-art-v1</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- ERRORS -->
+    <section class="bordered" id="errors">
+      <div class="section-header">
+        <div class="section-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <h2 class="section-title">Errors</h2>
+      </div>
+
+      <div class="grid-2" style="gap: 2.5rem; align-items: start;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+            <span style="color: var(--primary);">⚡</span>
+            <h3 style="margin: 0;">Error Semantics for Image Generation</h3>
+          </div>
+          <p style="font-size: 0.875rem; color: var(--muted-foreground); margin-bottom: 1.5rem;">Errors indicate the exact stage at which an image request failed — from input validation to model execution to delivery. This separation allows clients to implement accurate retries, fallbacks, and monitoring.</p>
+          <div class="warning-box">
+            <div class="warning-box-inner">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+              <div>
+                <h4 style="color: hsl(45, 100%, 60%);">Handling Rate Limits (429)</h4>
+                <p>When a <code>429</code> error is returned, clients should apply exponential backoff or retry after the window resets.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="mono text-green">200</td><td class="muted">OK – Success</td></tr>
+              <tr><td class="mono text-yellow">400</td><td class="muted">Bad Request – Invalid parameters</td></tr>
+              <tr><td class="mono text-yellow">401</td><td class="muted">Unauthorized – Invalid API Key</td></tr>
+              <tr><td class="mono text-red">429</td><td class="muted">Too Many Requests – Rate limit exceeded</td></tr>
+              <tr><td class="mono text-red">500</td><td class="muted">Internal Server Error</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECURITY -->
+    <section id="security">
+      <div class="section-header">
+        <div class="section-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        </div>
+        <h2 class="section-title">Security & Privacy</h2>
+      </div>
+
+      <ul class="security-list">
+        <li class="security-item">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <span><strong>Data Isolation:</strong> Each request is handled in an isolated execution context to prevent cross-user access or data leakage.</span>
+        </li>
+        <li class="security-item">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <span><strong>Controlled Delivery:</strong> Generated outputs are returned directly to the requester and are not indexed, cached, or reused.</span>
+        </li>
+        <li class="security-item">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <span><strong>Request Integrity:</strong> All requests are validated and monitored to prevent abuse, tampering, or unauthorized usage.</span>
+        </li>
+        <li class="security-item">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+          <span><strong>Platform Security:</strong> The service operates on hardened Cloudflare and AWS infrastructure with continuous monitoring.</span>
+        </li>
+      </ul>
+
+      <div class="security-cards">
+        <div class="security-card">
+          <div class="security-card-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
+          </div>
+          <div>
+            <h4>No Persistent Storage</h4>
+            <p>Generated images are stored only long enough to complete delivery and are automatically deleted afterward.</p>
+          </div>
+        </div>
+        <div class="security-card">
+          <div class="security-card-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div>
+            <h4>Time-Limited Access</h4>
+            <p>Signed URLs restrict access to generated images and automatically expire for added security.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="security-details">
+        <div class="security-details-grid">
+          <ul class="security-details-list">
+            <li class="security-details-item">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span><strong>Encrypted Transport:</strong> API requests and responses are protected in transit using modern TLS encryption.</span>
+            </li>
+            <li class="security-details-item">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span><strong>Access Controls:</strong> API keys enforce usage boundaries and can be rotated, restricted, or revoked instantly.</span>
+            </li>
+          </ul>
+          <ul class="security-details-list">
+            <li class="security-details-item">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span><strong>No Training:</strong> Customer inputs and outputs are excluded from any model training or improvement processes.</span>
+            </li>
+            <li class="security-details-item">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span><strong>DDoS Protection:</strong> Automated traffic filtering and rate controls help protect against abuse and service disruption.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <p>© 2023 AI Image API. All rights reserved.</p>
+      <div class="footer-links">
+        <a href="#">Terms of Service</a>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Status</a>
+      </div>
+    </footer>
+
+  </main>
+
+</body>
+</html>
