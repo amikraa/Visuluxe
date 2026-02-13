@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAdmin } from '@/contexts/AdminContext';
 import { devLog } from '@/lib/logger';
+import { cn } from '@/lib/utils';
 
 interface DashboardStats {
   totalUsers: number;
@@ -194,10 +195,20 @@ interface StatCardProps {
 
 function StatCard({ label, value, icon, trend, trendUp, subtitle, variant = 'default' }: StatCardProps) {
   return (
-    <div className={`bg-admin-surface/70 backdrop-blur-xl border border-admin-border p-5 rounded-xl flex flex-col justify-between h-32 hover:border-${variant === 'danger' ? 'admin-danger' : 'admin-primary'}/50 transition-colors group cursor-pointer`}>
+    <div
+      className={cn(
+        'bg-admin-surface/70 backdrop-blur-xl border border-admin-border p-5 rounded-xl flex flex-col justify-between h-32 transition-colors group cursor-pointer',
+        variant === 'danger' ? 'hover:border-admin-danger/50' : 'hover:border-admin-primary/50',
+      )}
+    >
       <div className="flex justify-between items-start">
         <span className="text-slate-400 text-sm font-medium">{label}</span>
-        <span className={`material-symbols-outlined text-slate-600 group-hover:text-${variant === 'danger' ? 'admin-danger' : 'admin-primary'} transition-colors`}>
+        <span
+          className={cn(
+            'material-symbols-outlined text-slate-600 transition-colors',
+            variant === 'danger' ? 'group-hover:text-admin-danger' : 'group-hover:text-admin-primary',
+          )}
+        >
           {icon}
         </span>
       </div>
