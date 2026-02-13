@@ -538,7 +538,7 @@ export default function ProviderDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShieldAlert className="h-5 w-5 text-amber-400" />
-              Re-authenticate Required
+              Re-authentication Required
             </DialogTitle>
             <DialogDescription className="text-slate-400">
               For security, please enter your password to view the API key. This action will be logged.
