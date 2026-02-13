@@ -10,3 +10,7 @@ export default defineConfig({
     include: ["src/**/*.test.ts", "src/**/*.test.tsx", "docs/**/*.test.ts"],
   },
 });
+});
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "docs/**/*.test.ts"],
+  },
+});
