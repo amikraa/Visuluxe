@@ -1,6 +1,5 @@
 ---
 
-````md
 # Visuluxe — Full Technical Audit & Codebase Documentation
 
 ---
@@ -457,5 +456,6 @@ Visuluxe is a serious Supabase-backed AI SaaS platform with:
 
 **Conclusion:**
 Visuluxe is architecturally strong and feature-rich but requires security hygiene improvements and stronger automated testing to reach hardened production maturity.
+
 
 ```
