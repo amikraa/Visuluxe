@@ -1,7 +1,5 @@
 # Visuluxe
 
-----------
-
 ## Overview
 
 Visuluxe is a production-intent AI image generation SaaS platform that enables users to generate high-fidelity images using advanced diffusion models. The platform provides a complete ecosystem for end-users, developers, and platform administrators, featuring user authentication, credit-based consumption tracking, API key management, and a comprehensive admin governance suite for security, billing, and analytics.
