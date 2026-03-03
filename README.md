@@ -88,6 +88,129 @@ Visuluxe/
 └── index.html                # HTML template
 ```
 
+### There are **multiple layers of security** between the frontend and backend:
+
+### 🔐 **Security Architecture Overview**
+
+The system uses a **3-tier architecture** with security at each layer:
+
+```
+Frontend → Supabase Edge Function → Private Backend
+   ↓              ↓                        ↓
+  JWT      JWT + API Key           Internal Secret
+```
+
+---
+
+### **1. Frontend → Supabase Edge Function Security**
+
+**Authentication Methods:**
+- **JWT Token** (Bearer token from Supabase Auth)
+- **API Key** (for programmatic access)
+
+When the frontend calls `supabase.functions.invoke('generate-image')`, it automatically includes the user's JWT token from the Supabase session.
+
+The Edge Function validates:
+- User authentication (JWT or API key)
+- User ban status
+- IP blocklist checks
+- Rate limits (RPM/RPD)
+- Credit balance
+- Daily generation limits
+
+---
+
+### **2. Supabase Edge Function → Private Backend Security**
+
+This is where the **internal secret** comes in:
+
+**Security Headers:**
+```typescript
+headers: {
+  "X-Internal-Secret": internalSecret || "",  // Server-to-server auth
+  "X-User-ID": userId || "",                   // Authenticated user ID
+  "X-API-Key-ID": apiKeyId || ""               // API key ID if used
+}
+```
+
+The Edge Function:
+1. Authenticates the user (JWT/API key)
+2. Strips the original auth headers
+3. Adds the `X-Internal-Secret` header (shared secret between Edge Function and Backend)
+4. Passes the already-verified `user_id` and `api_key_id`
+
+---
+
+### **3. Private Backend Security**
+
+The backend (`security.py`) implements a **priority-based authentication system**:
+
+```python
+async def get_authenticated_user(
+    authorization: str = Header(None),      # JWT
+    x_api_key: str = Header(None),          # API Key
+    x_internal_secret: str = Header(None),  # Internal Secret
+    x_user_id: str = Header(None),          # User ID from Edge Function
+    x_api_key_id: str = Header(None)        # API Key ID from Edge Function
+) -> dict:
+```
+
+**Authentication Priority:**
+1. **Internal Secret** (highest priority) - For server-to-server communication
+2. **JWT Token** - For direct frontend authentication
+3. **API Key** - For programmatic access
+
+The backend:
+- Validates the `X-Internal-Secret` against its configured `INTERNAL_SECRET`
+- **NEVER trusts client-provided user_id** - always derives it from verified tokens
+- Re-validates user ban status via Supabase
+- Enforces strict user isolation
+
+---
+
+### **Key Security Features:**
+
+✅ **Multi-layer authentication** - JWT, API keys, and internal secrets  
+✅ **Server-to-server trust** - Internal secret only known by Edge Function and Backend  
+✅ **User isolation** - Strict enforcement of user_id from verified sources  
+✅ **Ban enforcement** - Checked at both Edge Function and Backend levels  
+✅ **Rate limiting** - Enforced at multiple layers  
+✅ **IP blocklist** - Security events logged and blocked  
+✅ **Credit validation** - Reserved before processing, refunded on failure  
+✅ **Audit logging** - All authentication attempts logged  
+
+---
+
+### **Security Flow Diagram:**
+
+```
+┌─────────────┐
+│   Frontend  │
+│  (React App)│
+└──────┬──────┘
+       │ JWT Token (Supabase Auth)
+       ▼
+┌─────────────────────────┐
+│  Supabase Edge Function │
+│  - Validate JWT/API Key │
+│  - Check ban status     │
+│  - Check rate limits    │
+│  - Check credits        │
+└──────┬──────────────────┘
+       │ X-Internal-Secret + X-User-ID
+       ▼
+┌─────────────────────────┐
+│   Private Backend       │
+│  - Verify Internal Secret
+│  - Trust X-User-ID      │
+│  - Process image        │
+│  - Store in R2          │
+└─────────────────────────┘
+```
+
+This architecture ensures that even if someone bypasses the frontend, they still need to authenticate with either a valid API key or the internal secret to access the backend!
+
+
 ## Installation
 
 1. **Clone the repository:**
