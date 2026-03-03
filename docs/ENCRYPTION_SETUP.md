@@ -31,7 +31,7 @@ python3 -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(3
 
 ### Adding the Secret
 
-1. Go to your Supabase Dashboard: https://supabase.com/dashboard/project/vtudqqjmjcsgbpicjrtg
+1. Go to your Supabase Dashboard: https://supabase.com/dashboard/project/{ProjectID}
 2. Navigate to **Settings → Edge Functions → Secrets**
 3. Add a new secret:
    - **Name:** `ENCRYPTION_KEY`

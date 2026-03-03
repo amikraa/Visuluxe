@@ -23,7 +23,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // External Supabase project credentials
-    const externalUrl = "https://vtudqqjmjcsgbpicjrtg.supabase.co";
+    const externalUrl = "https://zaavpyuksdjuoqrlwzge.supabase.co";
     const externalServiceKey = Deno.env.get("EXTERNAL_SUPABASE_SERVICE_ROLE_KEY");
 
     if (!externalServiceKey) {

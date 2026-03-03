@@ -1,6 +1,6 @@
 -- =====================================================
 -- LOVABLE CLOUD → CUSTOM SUPABASE MIGRATION
--- Project: vtudqqjmjcsgbpicjrtg
+-- Project: {ProjectID}
 -- Generated: 2025-01-24
 -- 
 -- Run this in Custom Supabase Dashboard → SQL Editor

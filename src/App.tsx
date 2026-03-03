@@ -39,6 +39,7 @@ const AdminBilling = lazy(() => import("./pages/admin/AdminBilling"));
 const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics"));
 const AdminAPIKeys = lazy(() => import("./pages/admin/AdminAPIKeys"));
 const AdminNotifications = lazy(() => import("./pages/admin/AdminNotifications"));
+const AdminFailedJobs = lazy(() => import("./pages/admin/AdminFailedJobs"));
 
 const queryClient = new QueryClient();
 
@@ -136,6 +137,7 @@ const App = () => (
                     <Route path="analytics" element={<AdminAnalytics />} />
                     <Route path="api-keys" element={<AdminProtectedRoute requiredRole="admin"><AdminAPIKeys /></AdminProtectedRoute>} />
                     <Route path="notifications" element={<AdminProtectedRoute requiredRole="admin"><AdminNotifications /></AdminProtectedRoute>} />
+                    <Route path="failed-jobs" element={<AdminFailedJobs />} />
                   </Route>
                   
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

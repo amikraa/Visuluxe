@@ -54,6 +54,7 @@ const navItems: NavEntry[] = [
     section: 'System',
     items: [
       { path: '/admin/settings', icon: 'settings', label: 'Settings', minRole: 'super_admin' },
+      { path: '/admin/failed-jobs', icon: 'error', label: 'Failed Jobs' },
     ]
   },
 ];

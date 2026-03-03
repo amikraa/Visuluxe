@@ -80,7 +80,6 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
@@ -337,40 +336,62 @@ serve(async (req) => {
       );
     }
 
-    // Call AI Gateway for image generation
-    if (!lovableApiKey) {
-      console.error("LOVABLE_API_KEY not configured");
+    // Call Private Backend for image generation
+    const privateBackendUrl = Deno.env.get("PRIVATE_BACKEND_URL");
+    const internalSecret = Deno.env.get("INTERNAL_SECRET");
+    
+    if (!privateBackendUrl) {
+      console.error("PRIVATE_BACKEND_URL not configured");
       return new Response(
         JSON.stringify({ error: "Image generation service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Use configurable AI Gateway URL (defaults to Lovable AI Gateway)
-    const aiGatewayUrl = Deno.env.get("AI_GATEWAY_URL") || "https://ai.gateway.lovable.dev/v1/chat/completions";
-    const aiResponse = await fetch(aiGatewayUrl, {
+    // Forward to private backend
+    console.log("Forwarding request to private backend:", {
+      url: privateBackendUrl,
+      userId: userId,
+      apiKeyId: apiKeyId,
+      headers: {
+        "Authorization": "empty",
+        "X-Internal-Secret": internalSecret ? "[REDACTED]" : "missing",
+        "X-User-ID": userId || "missing",
+        "X-API-Key-ID": apiKeyId || "missing"
+      }
+    });
+    
+    const backendResponse = await fetch(`${privateBackendUrl}/v1/images/generations`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${lovableApiKey}`,
+        "Authorization": "", // Don't forward original auth - we'll use internal secret
         "Content-Type": "application/json",
+        "X-Internal-Secret": internalSecret || "",
+        "X-User-ID": userId || "", // Pass authenticated user ID
+        "X-API-Key-ID": apiKeyId || "" // Pass API key ID if used
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image-preview",
-        messages: [
-          {
-            role: "user",
-            content: `Generate an image: ${prompt}${negative_prompt ? `. Avoid: ${negative_prompt}` : ""}`
-          }
-        ],
-        modalities: ["image", "text"]
+        prompt,
+        negative_prompt,
+        model_id: model_id || "flux-dev",
+        size: width && height ? `${width}x${height}` : "1024x1024",
+        num_images: num_images || 1,
+        steps,
+        seed,
+        cfg_scale
       }),
+    });
+    
+    console.log("Backend response:", {
+      status: backendResponse.status,
+      statusText: backendResponse.statusText
     });
 
     const generationTime = Date.now() - startTime;
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error("AI Gateway error:", aiResponse.status, errorText);
+    if (!backendResponse.ok) {
+      const errorText = await backendResponse.text();
+      console.error("AI Gateway error:", backendResponse.status, errorText);
 
       // Log failed request
       await supabase.from("request_logs").insert({
@@ -378,7 +399,7 @@ serve(async (req) => {
         api_key_id: apiKeyId,
         endpoint: "/generate-image",
         method: "POST",
-        status_code: aiResponse.status,
+        status_code: backendResponse.status,
         response_time_ms: generationTime,
         ip_address: clientIp,
         user_agent: req.headers.get("user-agent"),
@@ -400,14 +421,14 @@ serve(async (req) => {
         credits_used: 0
       });
 
-      if (aiResponse.status === 429) {
+      if (backendResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded, please try again later" }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      if (aiResponse.status === 402) {
+      if (backendResponse.status === 402) {
         return new Response(
           JSON.stringify({ error: "Service quota exceeded" }),
           { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -420,11 +441,30 @@ serve(async (req) => {
       );
     }
 
-    const aiData = await aiResponse.json();
-    const generatedImage = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const aiData = await backendResponse.json();
+    
+    // Handle different response formats from private backend
+    let generatedImage: string | undefined;
+    
+    // Format 1: OpenAI-style (choices[0].message.images)
+    if (aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url) {
+      generatedImage = aiData.choices[0].message.images[0].image_url.url;
+    }
+    // Format 2: Custom format (data[0].url)
+    else if (aiData.data?.[0]?.url) {
+      generatedImage = aiData.data[0].url;
+    }
+    // Format 3: Direct URL in response
+    else if (aiData.url) {
+      generatedImage = aiData.url;
+    }
+    // Format 4: Array of URLs
+    else if (aiData.images?.[0]) {
+      generatedImage = typeof aiData.images[0] === 'string' ? aiData.images[0] : aiData.images[0].url;
+    }
 
     if (!generatedImage) {
-      console.error("No image in response:", aiData);
+      console.error("No image in backend response:", aiData);
       return new Response(
         JSON.stringify({ error: "No image generated" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

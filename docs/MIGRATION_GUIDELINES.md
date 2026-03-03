@@ -4,9 +4,9 @@
 
 This project uses a Custom Supabase project as its permanent backend:
 
-- **Project ID:** vtudqqjmjcsgbpicjrtg
-- **URL:** https://vtudqqjmjcsgbpicjrtg.supabase.co
-- **Dashboard:** https://supabase.com/dashboard/project/vtudqqjmjcsgbpicjrtg
+- **Project ID:** {ProjectID}
+- **URL:** https://{ProjectID}.supabase.co
+- **Dashboard:** https://supabase.com/dashboard/project/{ProjectID}
 - **Edge Functions:** Deployed with JWT verification disabled (verify in code)
 
 ### Required Secrets
