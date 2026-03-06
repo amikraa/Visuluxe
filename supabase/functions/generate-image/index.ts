@@ -89,8 +89,8 @@ serve(async (req) => {
 
     if (!prompt) {
       return new Response(
-        JSON.stringify({ error: "Prompt is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Prompt is required", status: 400 }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -99,8 +99,8 @@ serve(async (req) => {
     if (maintenanceMode === "true" || maintenanceMode === true) {
       const message = await getSystemSetting(supabase, "maintenance_message") || "System is under maintenance";
       return new Response(
-        JSON.stringify({ error: message }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: message, status: 503 }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -135,24 +135,24 @@ serve(async (req) => {
           details: { reason: "Invalid API key" }
         });
         
-        return new Response(
-          JSON.stringify({ error: "Invalid API key" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          return new Response(
+          JSON.stringify({ error: "Invalid API key", status: 401 }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       if (apiKey.status !== "active") {
         return new Response(
-          JSON.stringify({ error: `API key is ${apiKey.status}` }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: `API key is ${apiKey.status}`, status: 403 }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       // Check expiry
       if (apiKey.expires_at && new Date(apiKey.expires_at) < new Date()) {
         return new Response(
-          JSON.stringify({ error: "API key has expired" }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "API key has expired", status: 403 }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -167,16 +167,16 @@ serve(async (req) => {
 
       if (authError || !user) {
         return new Response(
-          JSON.stringify({ error: "Invalid session" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Invalid session", status: 401 }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       userId = user.id;
     } else {
       return new Response(
-        JSON.stringify({ error: "Authentication required" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Authentication required", status: 401 }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -195,8 +195,8 @@ serve(async (req) => {
 
     if (profile?.is_banned) {
       return new Response(
-        JSON.stringify({ error: `Account banned: ${profile.ban_reason || "Contact support"}` }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: `Account banned: ${profile.ban_reason || "Contact support"}`, status: 403 }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -222,8 +222,8 @@ serve(async (req) => {
       });
 
       return new Response(
-        JSON.stringify({ error: "Access denied" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Access denied", status: 403 }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -240,8 +240,8 @@ serve(async (req) => {
       });
 
       return new Response(
-        JSON.stringify({ error: rateLimitCheck.error }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: rateLimitCheck.error, status: 429 }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -258,8 +258,8 @@ serve(async (req) => {
 
       if ((todayCount || 0) >= profile.max_images_per_day) {
         return new Response(
-          JSON.stringify({ error: "Daily image generation limit reached" }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Daily image generation limit reached", status: 429 }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
@@ -279,16 +279,16 @@ serve(async (req) => {
         // Check if model is available
         if (model.status === "disabled" || model.status === "offline") {
           return new Response(
-            JSON.stringify({ error: "Model is currently unavailable" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            JSON.stringify({ error: "Model is currently unavailable", status: 400 }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
 
         // Check soft disable
         if (model.is_soft_disabled) {
           return new Response(
-            JSON.stringify({ error: model.soft_disable_message || "Model temporarily unavailable" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            JSON.stringify({ error: model.soft_disable_message || "Model temporarily unavailable", status: 400 }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
 
@@ -307,8 +307,8 @@ serve(async (req) => {
             }
           } else {
             return new Response(
-              JSON.stringify({ error: "Model is in cooldown, please try again later" }),
-              { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              JSON.stringify({ error: "Model is in cooldown, please try again later", status: 503 }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
         } else {
@@ -331,20 +331,25 @@ serve(async (req) => {
 
     if (totalAvailable < creditsCost) {
       return new Response(
-        JSON.stringify({ error: "Insufficient credits", required: creditsCost, available: totalAvailable }),
-        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ 
+          error: "Insufficient credits", 
+          required: creditsCost, 
+          available: totalAvailable,
+          status: 402,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // Call Private Backend for image generation
-    const privateBackendUrl = Deno.env.get("PRIVATE_BACKEND_URL");
+    const privateBackendUrl = Deno.env.get("PRIVATE_BACKEND_URL")?.replace(/\/+$/, "");
     const internalSecret = Deno.env.get("INTERNAL_SECRET");
     
     if (!privateBackendUrl) {
       console.error("PRIVATE_BACKEND_URL not configured");
       return new Response(
-        JSON.stringify({ error: "Image generation service not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Image generation service not configured", status: 500 }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -423,21 +428,21 @@ serve(async (req) => {
 
       if (backendResponse.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Rate limit exceeded, please try again later" }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Rate limit exceeded, please try again later", status: 429 }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       if (backendResponse.status === 402) {
         return new Response(
-          JSON.stringify({ error: "Service quota exceeded" }),
-          { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Service quota exceeded", status: 503 }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       return new Response(
-        JSON.stringify({ error: "Image generation failed" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Image generation failed", status: 500 }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -466,8 +471,8 @@ serve(async (req) => {
     if (!generatedImage) {
       console.error("No image in backend response:", aiData);
       return new Response(
-        JSON.stringify({ error: "No image generated" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "No image generated", status: 500 }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -576,31 +581,42 @@ serve(async (req) => {
       .eq("user_id", userId)
       .single();
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        image: {
+    // Format the response to match what the frontend expects
+    // `Generate.tsx` looks for either `data.images` (array) or `data.image_url`
+    const responsePayload = {
+      success: true,
+      images: [
+        {
           id: imageRecord?.id,
           url: generatedImage,
           prompt,
+          model: modelInfo?.id || model_id || "flux-dev",
           width: width || 1024,
           height: height || 1024,
-          generation_time_ms: generationTime
+          generation_time_ms: generationTime,
         },
-        credits: {
-          used: creditsCost,
-          balance: updatedCredits?.balance || 0,
-          daily_remaining: updatedCredits?.daily_credits || 0
-        }
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+      ],
+      image_url: generatedImage,
+      credits: {
+        used: creditsCost,
+        balance: updatedCredits?.balance || 0,
+        daily_remaining: updatedCredits?.daily_credits || 0,
+      },
+    };
+
+    return new Response(JSON.stringify(responsePayload), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
 
   } catch (error) {
     console.error("Generate image error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : "Unknown error",
+        status: 500,
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
