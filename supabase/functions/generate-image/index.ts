@@ -450,22 +450,65 @@ serve(async (req) => {
     
     // Handle different response formats from private backend
     let generatedImage: string | undefined;
-    
-    // Format 1: OpenAI-style (choices[0].message.images)
-    if (aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url) {
-      generatedImage = aiData.choices[0].message.images[0].image_url.url;
+
+    // Format 0: Visuluxe backend job-based response (job_id + status)
+    if (aiData?.job_id && aiData?.status) {
+      const jobId = aiData.job_id as string;
+      const maxWaitMs = 60000;
+      const pollIntervalMs = 2000;
+      const pollStart = Date.now();
+
+      while (!generatedImage && (Date.now() - pollStart) < maxWaitMs) {
+        const { data: job } = await supabase
+          .from("generation_jobs")
+          .select("status,error")
+          .eq("job_id", jobId)
+          .single();
+
+        if (job?.status === "completed") {
+          const { data: imagesForJob } = await supabase
+            .from("images")
+            .select("image_url")
+            .eq("job_id", jobId)
+            .order("created_at", { ascending: false })
+            .limit(1);
+
+          if (imagesForJob && imagesForJob.length > 0 && imagesForJob[0].image_url) {
+            generatedImage = imagesForJob[0].image_url;
+            break;
+          }
+        }
+
+        if (job?.status === "failed") {
+          const errorMessage = job.error || "Image generation failed";
+          return new Response(
+            JSON.stringify({ error: errorMessage, status: 500 }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+      }
     }
-    // Format 2: Custom format (data[0].url)
-    else if (aiData.data?.[0]?.url) {
-      generatedImage = aiData.data[0].url;
-    }
-    // Format 3: Direct URL in response
-    else if (aiData.url) {
-      generatedImage = aiData.url;
-    }
-    // Format 4: Array of URLs
-    else if (aiData.images?.[0]) {
-      generatedImage = typeof aiData.images[0] === 'string' ? aiData.images[0] : aiData.images[0].url;
+
+    // Fallback formats for providers that return image URLs directly
+    if (!generatedImage) {
+      // Format 1: OpenAI-style (choices[0].message.images)
+      if (aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url) {
+        generatedImage = aiData.choices[0].message.images[0].image_url.url;
+      }
+      // Format 2: Custom format (data[0].url)
+      else if (aiData.data?.[0]?.url) {
+        generatedImage = aiData.data[0].url;
+      }
+      // Format 3: Direct URL in response
+      else if (aiData.url) {
+        generatedImage = aiData.url;
+      }
+      // Format 4: Array of URLs
+      else if (aiData.images?.[0]) {
+        generatedImage = typeof aiData.images[0] === "string" ? aiData.images[0] : aiData.images[0].url;
+      }
     }
 
     if (!generatedImage) {
