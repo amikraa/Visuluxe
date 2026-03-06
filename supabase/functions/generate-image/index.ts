@@ -454,36 +454,40 @@ serve(async (req) => {
     // Format 0: Visuluxe backend job-based response (job_id + status)
     if (aiData?.job_id && aiData?.status) {
       const jobId = aiData.job_id as string;
+
+      // Create / upsert a corresponding job record that the frontend can query
+      await supabase
+        .from("edge_generation_jobs")
+        .upsert(
+          {
+            user_id: userId,
+            backend_job_id: jobId,
+            status: "pending",
+          },
+          { onConflict: "backend_job_id" },
+        );
+
       const maxWaitMs = 60000;
       const pollIntervalMs = 2000;
       const pollStart = Date.now();
 
-      while (!generatedImage && (Date.now() - pollStart) < maxWaitMs) {
-        const { data: job } = await supabase
-          .from("generation_jobs")
-          .select("status,error")
-          .eq("job_id", jobId)
+      while (!generatedImage && Date.now() - pollStart < maxWaitMs) {
+        const { data: edgeJob } = await supabase
+          .from("edge_generation_jobs")
+          .select("status,image_url,error")
+          .eq("backend_job_id", jobId)
           .single();
 
-        if (job?.status === "completed") {
-          const { data: imagesForJob } = await supabase
-            .from("images")
-            .select("image_url")
-            .eq("job_id", jobId)
-            .order("created_at", { ascending: false })
-            .limit(1);
-
-          if (imagesForJob && imagesForJob.length > 0 && imagesForJob[0].image_url) {
-            generatedImage = imagesForJob[0].image_url;
-            break;
-          }
+        if (edgeJob?.status === "completed" && edgeJob.image_url) {
+          generatedImage = edgeJob.image_url as string;
+          break;
         }
 
-        if (job?.status === "failed") {
-          const errorMessage = job.error || "Image generation failed";
+        if (edgeJob?.status === "failed") {
+          const errorMessage = (edgeJob.error as string | null) || "Image generation failed";
           return new Response(
             JSON.stringify({ error: errorMessage, status: 500 }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
           );
         }
 

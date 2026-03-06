@@ -92,6 +92,29 @@ class DatabaseService:
         
         sb.table("generation_jobs").update(update_data).eq("job_id", job_id).execute()
         logger.info(f"Updated job {job_id} status to {status}")
+
+        # Also keep edge_generation_jobs (used by the Edge Function) in sync
+        try:
+            edge_update: Dict[str, Any] = {
+                "updated_at": datetime.utcnow().isoformat(),
+                "status": status,
+            }
+
+            # If we have signed URLs in the result, store the first one
+            if status == "completed" and result:
+                images = result.get("images") or []
+                if images:
+                    # Each image dict should contain a public URL under "url"
+                    first = images[0]
+                    edge_update["image_url"] = first.get("url")
+
+            if error:
+                edge_update["error"] = error
+
+            sb.table("edge_generation_jobs").update(edge_update).eq("backend_job_id", job_id).execute()
+            logger.info(f"Synced edge_generation_jobs for backend_job_id {job_id} with status {status}")
+        except Exception as e:
+            logger.warning(f"Failed to sync edge_generation_jobs for job {job_id}: {e}")
     
     @classmethod
     async def get_pending_jobs(cls) -> List[dict]:
