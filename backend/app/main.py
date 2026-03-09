@@ -1,46 +1,57 @@
 """
 Visuluxe Private Backend - Main Application
-Secure FastAPI backend for image generation
+
+Fully OpenAI API-compatible backend for image generation, chat completions,
+text completions, and embeddings. Designed to work as a drop-in replacement
+with any OpenAI SDK.
 """
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from contextlib import asynccontextmanager
 import logging
 
 from app.config import settings
-from app.routers import images, models, admin, auth
+from app.routers import images, models, admin, auth, chat_completions, completions, embeddings
+from app.errors import (
+    openai_http_exception_handler,
+    openai_validation_exception_handler,
+    openai_generic_exception_handler,
+)
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifecycle management"""
+    """Application lifecycle management."""
     # Startup
-    logger.info("=" * 50)
-    logger.info("Starting Visuluxe Private Image Generation Backend")
-    logger.info(f"Cloudflare Account: {settings.cloudflare_account_id}")
-    logger.info(f"R2 Bucket: {settings.R2_BUCKET_NAME}")
-    logger.info(f"Queue: {settings.cf_queue_name}")
-    logger.info("=" * 50)
-    
+    logger.info("=" * 60)
+    logger.info("Starting Visuluxe Backend (OpenAI-compatible API)")
+    logger.info(f"  Cloudflare Account: {settings.cloudflare_account_id}")
+    logger.info(f"  R2 Bucket:          {settings.R2_BUCKET_NAME}")
+    logger.info(f"  Queue:              {settings.cf_queue_name}")
+    logger.info("=" * 60)
+
     # Initialize services
     from app.services.queue import QueueService
+
     QueueService.initialize()
-    
+
     # Start image processing loop in background
     from app.services.processor import ImageProcessor
     import asyncio
+
     processing_task = asyncio.create_task(ImageProcessor.start_processing_loop())
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down backend")
     processing_task.cancel()
@@ -52,69 +63,99 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI application
 app = FastAPI(
-    title="Visuluxe Image Generation API",
-    description="""Private backend for secure image generation.
-    
-## Features
-- **OpenAI-compatible endpoints** - Use standard OpenAI SDKs
-- **Secure image storage** - Private R2 bucket with signed URLs
-- **Job queue processing** - Cloudflare Queues for reliable processing
-- **Credit management** - Automatic credit reservation and refunds
-- **User isolation** - Strict user_id enforcement from JWT tokens
+    title="Visuluxe API",
+    description="""
+OpenAI-compatible API for AI image generation and more.
 
-## Security
-- Server-to-server communication uses X-Internal-Secret header
-- User ID is always derived from JWT, never client body
-- API keys are hashed and validated server-side
-- Images stored in private bucket with short-lived signed URLs
+## Compatibility
+
+This API is fully compatible with the OpenAI API specification. You can use
+any OpenAI SDK (Python, Node.js, etc.) by simply changing the `base_url` to
+point to this server.
+
+## Endpoints
+
+| Endpoint | Description |
+|---|---|
+| `GET /v1/models` | List available models |
+| `POST /v1/chat/completions` | Chat completions (streaming supported) |
+| `POST /v1/completions` | Text completions (legacy) |
+| `POST /v1/embeddings` | Create embeddings |
+| `POST /v1/images/generations` | Generate images |
+
+## Authentication
+
+Pass your API key via the `Authorization: Bearer <key>` header, or use
+`X-API-Key: <key>`, or a Supabase JWT token.
     """,
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan,
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
-# CORS - Only allow Supabase
+# ---- CORS ----
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.supabase_url] if settings.supabase_url else ["*"],
     allow_credentials=True,
-    allow_methods=["POST", "GET", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Internal-Secret", "X-API-Key"],
+    allow_methods=["POST", "GET", "OPTIONS", "DELETE", "PUT", "PATCH"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-Internal-Secret",
+        "X-API-Key",
+        "X-User-ID",
+        "X-API-Key-ID",
+    ],
 )
 
-# Global exception handler
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled exception: {exc}", exc_info=True)
-    return JSONResponse(
-        status_code=500,
-        content={"error": "Internal server error", "detail": str(exc) if settings.internal_secret else "Contact support"}
-    )
+# ---- OpenAI-compatible error handlers ----
+app.add_exception_handler(HTTPException, openai_http_exception_handler)
+app.add_exception_handler(RequestValidationError, openai_validation_exception_handler)
+app.add_exception_handler(Exception, openai_generic_exception_handler)
 
-# Include routers
-app.include_router(auth.router, prefix="/v1/auth", tags=["Authentication"])
-app.include_router(images.router, prefix="/v1/images", tags=["Image Generation"])
+# ---- Routers ----
+# OpenAI-compatible endpoints (all under /v1)
 app.include_router(models.router, prefix="/v1/models", tags=["Models"])
+app.include_router(chat_completions.router, prefix="/v1", tags=["Chat Completions"])
+app.include_router(completions.router, prefix="/v1", tags=["Completions"])
+app.include_router(embeddings.router, prefix="/v1", tags=["Embeddings"])
+app.include_router(images.router, prefix="/v1/images", tags=["Images"])
+
+# Internal / Visuluxe-specific endpoints
+app.include_router(auth.router, prefix="/v1/auth", tags=["Authentication"])
 app.include_router(admin.router, prefix="/v1/admin", tags=["Admin"])
 
-# Health check
+
+# ---- Health & root endpoints ----
+
+
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
+    """Health check endpoint for load balancers and monitoring."""
     return {
         "status": "healthy",
         "service": "visuluxe-backend",
-        "version": "1.0.0"
+        "version": "2.0.0",
     }
 
-# Root endpoint
+
 @app.get("/")
 async def root():
-    """API root"""
+    """API root -- returns basic service info and documentation links."""
     return {
-        "name": "Visuluxe Image Generation API",
-        "version": "1.0.0",
+        "name": "Visuluxe API",
+        "version": "2.0.0",
+        "openai_compatible": True,
         "docs": "/docs",
-        "openapi": "/openapi.json"
+        "redoc": "/redoc",
+        "openapi": "/openapi.json",
+        "endpoints": {
+            "models": "/v1/models",
+            "chat_completions": "/v1/chat/completions",
+            "completions": "/v1/completions",
+            "embeddings": "/v1/embeddings",
+            "images": "/v1/images/generations",
+        },
     }

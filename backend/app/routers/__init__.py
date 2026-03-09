@@ -1,6 +1,6 @@
-# Routers package
-from app.routers.auth import router as auth_router
-from app.routers.images import router as images_router
-from app.routers.models import router as models_router
+"""
+API routers package.
 
-__all__ = ["auth_router", "images_router", "models_router"]
+All OpenAI-compatible and internal routers are imported here for
+registration in the main application.
+"""
