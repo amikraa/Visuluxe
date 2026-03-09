@@ -57,21 +57,22 @@ def get_adapter(model: str) -> Optional[BaseProviderAdapter]:
     """
     Resolve a model identifier to its provider adapter.
 
-    Falls back to Flux for any model containing 'flux' in the name,
-    and to Echo for unknown models (so the API always returns a valid response).
+    Falls back to Flux for any model containing 'flux' or 'dall-e' in the
+    name.  Returns ``None`` for unknown models so that callers can raise
+    ``ModelNotFoundError``.
     """
     factory = _MODEL_ADAPTER_MAP.get(model)
     if factory:
         return factory()
 
-    # Fallback heuristics
+    # Fallback heuristics for known provider families
     model_lower = model.lower()
     if "flux" in model_lower or "dall-e" in model_lower:
         return _get_flux()
 
-    # Default: echo adapter for unknown text models
-    logger.warning(f"No adapter registered for model '{model}', falling back to echo adapter")
-    return _get_echo()
+    # Unknown model -- let the caller decide how to handle it
+    logger.warning(f"No adapter registered for model '{model}'")
+    return None
 
 
 def list_supported_models() -> list:
