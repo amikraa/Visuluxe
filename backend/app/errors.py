@@ -47,7 +47,7 @@ class AuthenticationError(OpenAIAPIError):
         super().__init__(401, message, error_type="authentication_error", code="invalid_api_key")
 
 
-class PermissionError(OpenAIAPIError):
+class PermissionDeniedError(OpenAIAPIError):
     def __init__(self, message: str = "You do not have access to this resource"):
         super().__init__(403, message, error_type="permission_error", code="insufficient_permissions")
 

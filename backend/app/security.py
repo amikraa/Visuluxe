@@ -126,8 +126,14 @@ async def verify_api_key(api_key: str) -> dict:
         if record["status"] != "active":
             raise HTTPException(status_code=403, detail=f"API key is {record['status']}")
 
-        if record.get("expires_at") and record["expires_at"] < "now":
-            raise HTTPException(status_code=403, detail="API key has expired")
+        if record.get("expires_at"):
+            from datetime import datetime, timezone
+            expires_at = record["expires_at"]
+            if isinstance(expires_at, str):
+                # Parse ISO 8601 timestamp from the database
+                expires_at = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+            if expires_at < datetime.now(timezone.utc):
+                raise HTTPException(status_code=403, detail="API key has expired")
 
         return {
             "user_id": record["user_id"],

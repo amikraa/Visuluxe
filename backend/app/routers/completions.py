@@ -38,8 +38,8 @@ async def create_completion(
         result = await adapter.completion(
             model=body.model,
             prompt=prompt,
-            temperature=body.temperature or 1.0,
-            top_p=body.top_p or 1.0,
+            temperature=body.temperature if body.temperature is not None else 1.0,
+            top_p=body.top_p if body.top_p is not None else 1.0,
             max_tokens=body.max_tokens,
             stop=body.stop,
             stream=body.stream or False,
