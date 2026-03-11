@@ -1,747 +1,438 @@
-# Visuluxe
+# Visuluxe AI Image Generation Platform
 
-An OpenAI-compatible API gateway for AI image generation, chat completions, text completions, and embeddings. Use any OpenAI SDK by pointing `base_url` at your Visuluxe instance -- no code changes required.
+A comprehensive, enterprise-ready AI image generation platform built with modern technologies and advanced features.
 
----
+## 🚀 Features
 
-## Table of Contents
+### Core Functionality
+- **Multi-Provider Support**: Flux, OpenAI DALL-E 3, Stability AI
+- **Priority-Based Job Processing**: Enterprise > Pro > Free account tiers
+- **Real-time Job Management**: Admin dashboard with live monitoring
+- **Cloudflare R2 Storage**: Scalable, cost-effective image storage
+- **API Key Management**: Secure API access with IP restrictions
 
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Features](#features)
-- [API Reference](#api-reference)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage Examples](#usage-examples)
-- [Deployment](#deployment)
-- [Troubleshooting](#troubleshooting)
+### Advanced Features
+- **Telegram Integration**: Real-time monitoring and notifications
+- **Provider Health Monitoring**: Automatic health checks and failover
+- **Security Monitoring**: Suspicious activity detection and IP blocking
+- **User Storage Management**: Configurable image expiration and lifecycle
+- **Model Catalog**: Comprehensive model information and API examples
+- **Enhanced Logging**: Complete audit trail and debugging support
 
----
-
-## Overview
-
-Visuluxe is a production-grade SaaS platform that exposes a **fully OpenAI-compatible REST API** backed by pluggable provider adapters. The system routes requests through a FastAPI backend that translates between the OpenAI wire format and the native format of each upstream provider (Flux, Anthropic, local models, Ollama, etc.).
-
-### Supported Providers
-
-| Provider | Capabilities | Status |
-|---|---|---|
-| **Flux (deepimg.ai)** | Image generation | Production |
-| **Echo (built-in)** | Chat, completions, embeddings | Testing / reference |
-| Anthropic | Chat completions | Planned |
-| Ollama | Chat, completions, embeddings | Planned |
-| vLLM | Chat, completions | Planned |
-
----
-
-## Architecture
-
-### High-Level System Diagram
-
-```mermaid
-graph TB
-    subgraph Clients
-        SDK[OpenAI SDK / HTTP Client]
-    end
-
-    subgraph Visuluxe API
-        GW[FastAPI Gateway]
-        AUTH[Auth Middleware]
-        ERR[Error Handler]
-        ROUTER[Router Layer]
-    end
-
-    subgraph Adapters
-        FLUX[Flux Adapter]
-        ECHO[Echo Adapter]
-        FUTURE[Future Adapters...]
-    end
-
-    subgraph External
-        FLUXAPI[Flux / deepimg API]
-        R2[Cloudflare R2]
-        SB[Supabase]
-    end
-
-    SDK -->|HTTP/SSE| GW
-    GW --> AUTH
-    AUTH --> ERR
-    ERR --> ROUTER
-    ROUTER --> FLUX
-    ROUTER --> ECHO
-    ROUTER --> FUTURE
-    FLUX --> FLUXAPI
-    FLUX --> R2
-    AUTH --> SB
-```
-
-### Request Flow
-
-```mermaid
-sequenceDiagram
-    participant C as Client (OpenAI SDK)
-    participant A as API Gateway
-    participant M as Auth Middleware
-    participant R as Router
-    participant AD as Provider Adapter
-    participant P as Upstream Provider
-    participant S as Storage (R2)
-
-    C->>A: POST /v1/chat/completions<br/>Authorization: Bearer sk-xxx
-    A->>M: Validate token
-    M->>M: Detect key type (JWT / API key)
-    M-->>A: user context
-    A->>R: Route to handler
-    R->>AD: Translate to provider format
-    AD->>P: Native API call
-    P-->>AD: Provider response
-    AD->>AD: Translate to OpenAI format
-    AD-->>R: OpenAI-compatible response
-    R-->>C: JSON / SSE response
-```
-
-### Provider Adapter Layer
-
-```mermaid
-graph LR
-    subgraph OpenAI Format
-        REQ[OpenAI Request]
-        RES[OpenAI Response]
-    end
-
-    subgraph Adapter Layer
-        A1[Flux Adapter]
-        A2[Echo Adapter]
-        A3[Anthropic Adapter]
-    end
-
-    subgraph Native Format
-        F1[Flux API]
-        F2[Echo Response]
-        F3[Anthropic API]
-    end
-
-    REQ --> A1 --> F1
-    REQ --> A2 --> F2
-    REQ --> A3 --> F3
-    F1 --> A1 --> RES
-    F2 --> A2 --> RES
-    F3 --> A3 --> RES
-```
-
-### Backend Directory Structure
+## 🏗️ Architecture
 
 ```
-backend/
-├── app/
-│   ├── main.py              # FastAPI app, lifespan, router registration
-│   ├── config.py             # Pydantic settings from environment
-│   ├── security.py           # JWT, API key, internal secret auth
-│   ├── errors.py             # OpenAI-compatible error handling
-│   ├── adapters/             # Provider translation layer
-│   │   ├── base.py           #   Abstract base adapter
-│   │   ├── flux.py           #   Flux image generation adapter
-│   │   ├── echo.py           #   Echo/test adapter (chat, completions, embeddings)
-│   │   └── registry.py       #   Model-to-adapter routing
-│   ├── models/
-│   │   ├── schemas.py        #   Legacy Pydantic schemas
-│   │   └── openai_schemas.py #   OpenAI-compatible request/response models
-│   ├── routers/
-│   │   ├── chat_completions.py  # POST /v1/chat/completions
-│   │   ├── completions.py       # POST /v1/completions
-│   │   ├── embeddings.py        # POST /v1/embeddings
-│   │   ├── images.py            # POST /v1/images/generations
-│   │   ├── models.py            # GET  /v1/models
-│   │   ├── auth.py              # GET  /v1/auth/me
-│   │   └── admin.py             # Admin endpoints
-│   ├── services/
-│   │   ├── credit.py         # Credit check, reservation, refunds
-│   │   ├── database.py       # Supabase database operations
-│   │   ├── processor.py      # Background job processing loop
-│   │   ├── provider.py       # Model/provider DB queries
-│   │   ├── queue.py          # Cloudflare Queue integration
-│   │   ├── r2.py             # R2 upload helpers
-│   │   └── storage.py        # S3-compatible R2 storage (boto3)
-│   └── workers/
-│       └── base.py           # Worker registry and Flux worker
-├── run_worker.py             # Standalone worker process
-├── Dockerfile
-├── docker-compose.yml
-└── requirements.txt
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Backend API   │    │   Supabase DB   │
+│   (React/Vite)  │◄──►│   (FastAPI)     │◄──►│   (PostgreSQL)  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ Cloudflare R2   │    │ Provider APIs   │    │ Analytics &     │
+│ (Image Storage) │    │ (Flux, OpenAI)  │    │ Monitoring      │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Telegram Bot Integration                     │
+│                    (Real-time Notifications)                    │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
----
+### System Flow
 
-## Features
+1. **User Request**: User submits image generation request
+2. **Job Queue**: Request enters priority-based job queue
+3. **Provider Selection**: System selects optimal provider
+4. **Image Generation**: Provider processes the request
+5. **Storage**: Generated images stored in Cloudflare R2
+6. **Delivery**: Images delivered to user with signed URLs
+7. **Monitoring**: All steps monitored and logged
 
-- **Full OpenAI API compatibility** -- works with Python `openai`, Node `openai`, and any HTTP client
-- **Streaming (SSE)** -- real-time token streaming for chat completions
-- **Tool calling & function calling** -- pass tools/functions exactly as with OpenAI
-- **Multi-provider support** -- pluggable adapter layer translates between providers
-- **Image generation** -- Flux-powered image generation via `/v1/images/generations`
-- **Embeddings** -- `/v1/embeddings` endpoint
-- **Credit management** -- automatic credit check, reservation, and refund
-- **Three auth methods** -- JWT tokens, API keys (`sk-xxx`), and internal secrets
-- **OpenAI error format** -- all errors return the standard `{ "error": { ... } }` envelope
-- **Background job queue** -- Cloudflare Queues with database fallback
-- **Private image storage** -- Cloudflare R2 with signed URLs
-- **Admin panel** -- user management, model configuration, analytics
-- **Rate limiting** -- configurable RPM/RPD per API key
+## 🛠️ Tech Stack
 
----
+### Frontend
+- **React 18** with TypeScript
+- **Vite** for fast development and build
+- **Tailwind CSS** for styling
+- **TanStack Query** for state management
+- **Lucide React** for icons
 
-## API Reference
+### Backend
+- **FastAPI** with Python 3.10+
+- **Supabase** for database and authentication
+- **Cloudflare R2** for image storage
+- **Cloudflare Workers** for edge functions
+- **PostgreSQL** for data persistence
 
-### Authentication
+### Infrastructure
+- **Docker** for containerization
+- **Cloudflare** for CDN and storage
+- **Supabase** for backend services
+- **Telegram Bot API** for notifications
 
-All endpoints require authentication via one of:
-
-| Method | Header | Example |
-|---|---|---|
-| API Key (OpenAI-style) | `Authorization: Bearer sk-xxx` | `Authorization: Bearer sk-abc123...` |
-| API Key (explicit) | `X-API-Key: sk-xxx` | `X-API-Key: sk-abc123...` |
-| JWT Token | `Authorization: Bearer <jwt>` | `Authorization: Bearer eyJhbG...` |
-| Internal Secret | `X-Internal-Secret: <secret>` | Server-to-server only |
-
-### `GET /v1/models`
-
-List all available models.
-
-**Response:**
-
-```json
-{
-  "object": "list",
-  "data": [
-    {
-      "id": "flux-dev",
-      "object": "model",
-      "created": 1700000000,
-      "owned_by": "visuluxe",
-      "permission": [],
-      "root": "flux-dev",
-      "parent": null
-    }
-  ]
-}
-```
-
-**curl:**
-
-```bash
-curl https://your-api.example.com/v1/models \
-  -H "Authorization: Bearer sk-your-api-key"
-```
-
-### `GET /v1/models/{model_id}`
-
-Retrieve details for a single model.
-
-**Response:**
-
-```json
-{
-  "id": "flux-dev",
-  "object": "model",
-  "created": 0,
-  "owned_by": "visuluxe",
-  "permission": [],
-  "root": "flux-dev",
-  "parent": null
-}
-```
-
-### `POST /v1/chat/completions`
-
-Create a chat completion. Supports streaming via `"stream": true`.
-
-**Request:**
-
-```json
-{
-  "model": "gpt-4o",
-  "messages": [
-    {"role": "system", "content": "You are a helpful assistant."},
-    {"role": "user", "content": "Hello!"}
-  ],
-  "temperature": 0.7,
-  "max_tokens": 256,
-  "stream": false
-}
-```
-
-**Response:**
-
-```json
-{
-  "id": "chatcmpl-abc123",
-  "object": "chat.completion",
-  "created": 1700000000,
-  "model": "gpt-4o",
-  "choices": [
-    {
-      "index": 0,
-      "message": {
-        "role": "assistant",
-        "content": "Hello! How can I help you today?"
-      },
-      "finish_reason": "stop"
-    }
-  ],
-  "usage": {
-    "prompt_tokens": 20,
-    "completion_tokens": 8,
-    "total_tokens": 28
-  }
-}
-```
-
-**curl (streaming):**
-
-```bash
-curl https://your-api.example.com/v1/chat/completions \
-  -H "Authorization: Bearer sk-your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "gpt-4o",
-    "messages": [{"role": "user", "content": "Hello"}],
-    "stream": true
-  }'
-```
-
-### `POST /v1/completions`
-
-Create a text completion (legacy endpoint).
-
-**Request:**
-
-```json
-{
-  "model": "gpt-3.5-turbo",
-  "prompt": "Once upon a time",
-  "max_tokens": 100,
-  "temperature": 0.8
-}
-```
-
-**Response:**
-
-```json
-{
-  "id": "cmpl-abc123",
-  "object": "text_completion",
-  "created": 1700000000,
-  "model": "gpt-3.5-turbo",
-  "choices": [
-    {
-      "text": "Once upon a time, there was a...",
-      "index": 0,
-      "finish_reason": "stop"
-    }
-  ],
-  "usage": {
-    "prompt_tokens": 4,
-    "completion_tokens": 25,
-    "total_tokens": 29
-  }
-}
-```
-
-### `POST /v1/embeddings`
-
-Create embeddings for input text(s).
-
-**Request:**
-
-```json
-{
-  "model": "text-embedding-ada-002",
-  "input": "The quick brown fox"
-}
-```
-
-**Response:**
-
-```json
-{
-  "object": "list",
-  "data": [
-    {
-      "object": "embedding",
-      "embedding": [0.019, -0.003, ...],
-      "index": 0
-    }
-  ],
-  "model": "text-embedding-ada-002",
-  "usage": {
-    "prompt_tokens": 5,
-    "total_tokens": 5
-  }
-}
-```
-
-### `POST /v1/images/generations`
-
-Generate images from a text prompt. Returns a job ID for async polling.
-
-**Request:**
-
-```json
-{
-  "model": "flux-dev",
-  "prompt": "A futuristic city at sunset",
-  "n": 1,
-  "size": "1024x1024",
-  "quality": "standard"
-}
-```
-
-**Response:**
-
-```json
-{
-  "job_id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "pending",
-  "created": 1700000000,
-  "data": null,
-  "error": null
-}
-```
-
-**Poll job status:**
-
-```bash
-curl https://your-api.example.com/v1/images/jobs/550e8400-e29b-41d4-a716-446655440000 \
-  -H "Authorization: Bearer sk-your-api-key"
-```
-
-**Completed response:**
-
-```json
-{
-  "job_id": "550e8400-e29b-41d4-a716-446655440000",
-  "status": "completed",
-  "created": 1700000000,
-  "data": [
-    {
-      "url": "https://api.voidzero.in/images/user123/abc.png",
-      "revised_prompt": "A futuristic city at sunset"
-    }
-  ]
-}
-```
-
----
-
-## Installation
+## 📦 Installation
 
 ### Prerequisites
+- Node.js 18+
+- Python 3.10+
+- Docker
+- Supabase project
+- Cloudflare account
 
-- Python 3.11+
-- Docker and Docker Compose (for containerized deployment)
-- Supabase project (for auth and database)
-- Cloudflare account (for R2 storage and Queues)
+### Backend Setup
 
-### Local Development
-
-```bash
-# Clone the repository
-git clone https://github.com/amikraa/Visuluxe.git
-cd Visuluxe/backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# venv\Scripts\activate   # Windows
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Copy and configure environment
-cp .env.example .env
-# Edit .env with your actual credentials
-
-# Run the API server
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
-# In a separate terminal, run the worker
-python run_worker.py
-```
-
-### Docker
-
+1. **Clone and install dependencies:**
 ```bash
 cd backend
-
-# Build and run
-docker compose up --build -d
-
-# View logs
-docker compose logs -f api
-docker compose logs -f worker
+pip install -r requirements.txt
 ```
 
----
+2. **Environment configuration:**
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
 
-## Configuration
+3. **Required Environment Variables:**
+```bash
+# Supabase Configuration
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_KEY=your_service_key
 
-### Environment Variables
+# Cloudflare Configuration
+CLOUDFLARE_ACCOUNT_ID=your_account_id
+CLOUDFLARE_API_TOKEN=your_api_token
+R2_ACCESS_KEY_ID=your_r2_access_key
+R2_SECRET_ACCESS_KEY=your_r2_secret_key
+R2_BUCKET_NAME=your_bucket_name
+R2_ENDPOINT=your_r2_endpoint
+R2_PUBLIC_BASE_URL=your_r2_public_url
 
-| Variable | Description | Required |
-|---|---|---|
-| `SUPABASE_URL` | Supabase project URL | Yes |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | Yes |
-| `INTERNAL_SECRET` | Server-to-server auth secret | Yes |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID | Yes |
-| `CLOUDFLARE_API_TOKEN` | Cloudflare API token | Yes |
-| `R2_ACCESS_KEY_ID` | R2 S3-compatible access key | Yes |
-| `R2_SECRET_ACCESS_KEY` | R2 S3-compatible secret key | Yes |
-| `R2_BUCKET_NAME` | R2 bucket name | Yes |
-| `R2_ENDPOINT` | R2 S3-compatible endpoint | Yes |
-| `R2_PUBLIC_URL` | Public URL prefix for R2 objects | No |
-| `CF_QUEUE_NAME` | Cloudflare Queue name | No |
-| `FLUX_API_URL` | Flux provider API URL | Yes |
+# Provider Configuration
+FLUX_API_URL=https://api.flux.ai/v1/generate
+
+# Telegram Configuration (Optional)
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+TELEGRAM_ADMIN_CHAT_ID=your_admin_chat_id
+
+# Internal Security
+INTERNAL_SECRET=your_internal_secret
+```
+
+4. **Run migrations:**
+```bash
+# Apply database migrations
+supabase db push
+```
+
+5. **Start the server:**
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Frontend Setup
+
+1. **Install dependencies:**
+```bash
+cd src
+npm install
+```
+
+2. **Environment configuration:**
+```bash
+cp .env.example .env
+# Edit .env with your Supabase project details
+```
+
+3. **Start development server:**
+```bash
+npm run dev
+```
+
+## 🔧 Configuration
+
+### Account Types and Priorities
+
+| Account Type | Priority | Concurrent Jobs | Storage Tier | Max Images/Request |
+|--------------|----------|----------------|--------------|-------------------|
+| Enterprise   | 10       | 5              | Enterprise   | 4                 |
+| Pro          | 5        | 3              | Premium      | 4                 |
+| Free         | 1        | 1              | Basic        | 1                 |
+
+### Provider Configuration
+
+Each provider can be configured with:
+- **Cost per generation**: Credits charged per image
+- **Max concurrent jobs**: Provider capacity limits
+- **Health check interval**: How often to check provider status
+- **Auto-disable threshold**: Failures before disabling provider
+
+### Storage Management
+
+Users can configure:
+- **Auto-delete after**: Days until images expire (7-2555 days)
+- **Storage tier**: Basic/Premium/Enterprise
+- **Long-term storage**: Enable extended storage options
+
+## 📊 Monitoring and Analytics
+
+### Telegram Integration
+
+The system provides real-time notifications via Telegram:
+
+**Image Generation Events:**
+- ✅ **SUCCESS**: Successful image generation
+- ❌ **FAILED**: Generation failures with error details
+
+**Security Events:**
+- 🆕 **New Account**: User registration
+- 🔐 **Password Change**: Security updates
+- 💰 **Credit Added**: Account top-ups
+- 🚨 **Mass Requests**: Suspicious activity
+- 🚫 **Unauthorized Access**: Security violations
+
+**System Alerts:**
+- ✅ **Provider Healthy**: Provider status updates
+- ⚠️ **Provider Unhealthy**: Health check failures
+- 🔧 **Maintenance**: System maintenance notifications
+
+### Provider Health Monitoring
+
+Automatic health checks include:
+- **API Availability**: HTTP status checks
+- **Response Time**: Latency monitoring
+- **Response Validation**: Data format verification
+- **Auto-Disable**: Automatic provider disabling on failures
+
+### Security Monitoring
+
+The system detects and responds to:
+- **Rate Limiting**: RPM/RPD violations
+- **Mass Generation**: Suspicious bulk requests
+- **Unauthorized Access**: Failed authentication attempts
+- **Bot Attacks**: Automated attack patterns
+
+## 🔐 Security Features
+
+### API Key IP Restrictions
+
+Each API key can be configured with:
+- **Allowed IPs**: List of permitted IP addresses
+- **Any IP Access**: `0.0.0.0` allows access from any IP
+- **Automatic Blocking**: Failed attempts trigger IP blocking
 
 ### Rate Limiting
 
-Default rate limits (configurable per API key in the database):
+- **Per User**: Requests per minute/day limits
+- **Per IP**: Additional IP-based rate limiting
+- **Dynamic Limits**: Account type-based limits
 
-| Setting | Default |
-|---|---|
-| Requests per minute (RPM) | 60 |
-| Requests per day (RPD) | 1000 |
-| Max concurrent jobs per user | 2 |
+### Audit Logging
 
-### Model Routing
+All security events are logged with:
+- **User Information**: Who performed the action
+- **IP Address**: Source of the request
+- **Timestamp**: When the event occurred
+- **Details**: Full context of the event
 
-Models are resolved via the adapter registry in `backend/app/adapters/registry.py`. To add a new provider:
+## 🎨 Model Catalog
 
-1. Create a new adapter in `backend/app/adapters/` inheriting from `BaseProviderAdapter`
-2. Implement the required methods (`chat_completion`, `chat_completion_stream`, `completion`, `embeddings`)
-3. Register your models in the `_MODEL_ADAPTER_MAP` dict in `registry.py`
+The platform includes a comprehensive model catalog with:
 
----
+### Model Information
+- **Capabilities**: Text-to-image, image-to-image, inpainting
+- **Supported Sizes**: Available resolution options
+- **Max Images**: Maximum images per request
+- **Provider Support**: Which providers offer the model
 
-## Usage Examples
+### API Documentation
+- **Endpoint Examples**: Ready-to-use API calls
+- **Parameter Details**: Complete parameter documentation
+- **Pricing Information**: Cost per provider
+- **Usage Examples**: Common use cases
 
-### Python (OpenAI SDK)
+## 🔄 Job Management
 
-```python
-from openai import OpenAI
+### Priority Queue System
 
-client = OpenAI(
-    api_key="sk-your-api-key",
-    base_url="https://your-api.example.com/v1",
-)
+Jobs are processed based on:
+1. **Account Priority**: Enterprise > Pro > Free
+2. **Queue Time**: FIFO within priority levels
+3. **Provider Availability**: Real-time provider status
 
-# Chat completion
-response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "Hello!"}],
-)
-print(response.choices[0].message.content)
+### Job Lifecycle
 
-# Streaming
-stream = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "Tell me a story"}],
-    stream=True,
-)
-for chunk in stream:
-    if chunk.choices[0].delta.content:
-        print(chunk.choices[0].delta.content, end="")
+1. **Created**: Job enters the queue
+2. **Processing**: Provider is working on the job
+3. **Completed**: Images generated successfully
+4. **Failed**: Generation failed (retryable)
+5. **Cancelled**: User/admin cancelled the job
 
-# Tool calling
-response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "What's the weather?"}],
-    tools=[{
-        "type": "function",
-        "function": {
-            "name": "get_weather",
-            "description": "Get current weather",
-            "parameters": {
-                "type": "object",
-                "properties": {"location": {"type": "string"}},
-            },
-        },
-    }],
-)
+### Admin Features
 
-# Embeddings
-embeddings = client.embeddings.create(
-    model="text-embedding-ada-002",
-    input="Hello world",
-)
-print(len(embeddings.data[0].embedding))  # 1536
+- **Real-time Monitoring**: Live job status updates
+- **Job Control**: Cancel, retry, and prioritize jobs
+- **Statistics**: Queue length, completion rates, failure rates
+- **Detailed Logs**: Complete job execution history
 
-# Image generation
-image = client.images.generate(
-    model="flux-dev",
-    prompt="A cat in space",
-    n=1,
-    size="1024x1024",
-)
+## 📁 Project Structure
+
+```
+Visuluxe/
+├── backend/
+│   ├── app/
+│   │   ├── main.py              # FastAPI application
+│   │   ├── config.py            # Configuration management
+│   │   ├── security.py          # Authentication and security
+│   │   ├── services/
+│   │   │   ├── database.py      # Database operations
+│   │   │   ├── processor.py     # Image processing
+│   │   │   ├── storage.py       # R2 storage management
+│   │   │   ├── telegram_logger.py    # Telegram integration
+│   │   │   ├── provider_health.py    # Provider monitoring
+│   │   │   ├── storage_management.py # Storage lifecycle
+│   │   │   └── security_monitoring.py # Security features
+│   │   ├── routers/
+│   │   │   ├── admin.py         # Admin endpoints
+│   │   │   ├── auth.py          # Authentication
+│   │   │   ├── images.py        # Image endpoints
+│   │   │   └── models.py        # Model catalog
+│   │   └── models/
+│   │       ├── schemas.py       # Pydantic models
+│   │       └── openai_schemas.py # OpenAI compatibility
+│   ├── requirements.txt         # Python dependencies
+│   └── Dockerfile              # Container configuration
+├── src/
+│   ├── pages/
+│   │   ├── ModelCatalog.tsx     # Model catalog UI
+│   │   ├── admin/
+│   │   │   └── JobsManagement.tsx # Admin job management
+│   │   └── ...                  # Other pages
+│   ├── components/
+│   │   ├── ui/                  # Reusable UI components
+│   │   └── ...                  # Feature components
+│   ├── services/                # Frontend services
+│   ├── lib/                     # Utility functions
+│   └── integrations/            # External integrations
+├── supabase/
+│   ├── migrations/              # Database migrations
+│   │   ├── 20260311_enhanced_job_management.sql
+│   │   └── 20260311_jobs_management_functions.sql
+│   └── functions/               # Edge functions
+├── docs/
+│   ├── architecture.md          # System architecture
+│   ├── CODEBASE_DEEP_DIVE.md    # Codebase documentation
+│   ├── ENCRYPTION_SETUP.md      # Security setup
+│   ├── MIGRATION_GUIDELINES.md  # Migration instructions
+│   ├── PROFILE_RELIABILITY.md   # Performance optimization
+│   └── TECHNICAL_AUDIT.md       # Technical review
+└── public/                      # Static assets
 ```
 
-### JavaScript (OpenAI SDK)
+## 🚀 Deployment
 
-```javascript
-import OpenAI from "openai";
+### Docker Deployment
 
-const client = new OpenAI({
-  apiKey: "sk-your-api-key",
-  baseURL: "https://your-api.example.com/v1",
-});
-
-// Chat completion
-const completion = await client.chat.completions.create({
-  model: "gpt-4o",
-  messages: [{ role: "user", content: "Hello!" }],
-});
-console.log(completion.choices[0].message.content);
-
-// Streaming
-const stream = await client.chat.completions.create({
-  model: "gpt-4o",
-  messages: [{ role: "user", content: "Tell me a story" }],
-  stream: true,
-});
-for await (const chunk of stream) {
-  process.stdout.write(chunk.choices[0]?.delta?.content || "");
-}
-```
-
-### curl
-
+1. **Build images:**
 ```bash
-# Chat completion
-curl https://your-api.example.com/v1/chat/completions \
-  -H "Authorization: Bearer sk-your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"gpt-4o","messages":[{"role":"user","content":"Hello"}]}'
-
-# List models
-curl https://your-api.example.com/v1/models \
-  -H "Authorization: Bearer sk-your-api-key"
-
-# Embeddings
-curl https://your-api.example.com/v1/embeddings \
-  -H "Authorization: Bearer sk-your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"text-embedding-ada-002","input":"Hello world"}'
-
-# Image generation
-curl https://your-api.example.com/v1/images/generations \
-  -H "Authorization: Bearer sk-your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"flux-dev","prompt":"A sunset over mountains","n":1,"size":"1024x1024"}'
+docker-compose build
 ```
 
----
-
-## Deployment
-
-### Docker Compose (Recommended)
-
+2. **Run services:**
 ```bash
-cd backend
-
-# Create .env file with your credentials
-cp .env.example .env
-
-# Build and start services
-docker compose up --build -d
-
-# The API is now available at http://localhost:8000
-# The worker processes jobs in the background
+docker-compose up -d
 ```
 
-### VPS / Bare Metal
+### Cloudflare Deployment
 
-```bash
-# Install Python 3.11+
-# Clone the repo and cd into backend/
+1. **Deploy backend to Cloudflare Workers**
+2. **Configure R2 bucket for image storage**
+3. **Set up Pages for frontend hosting**
+4. **Configure environment variables**
 
-pip install -r requirements.txt
+### Supabase Setup
 
-# Run API with Gunicorn + Uvicorn workers
-gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+1. **Create new project**
+2. **Run database migrations**
+3. **Configure authentication**
+4. **Set up storage buckets**
 
-# Run worker in a separate process (use systemd or supervisor)
-python run_worker.py
-```
+## 📈 Performance Optimization
 
-### Cloud Platforms
+### Caching Strategy
+- **Redis**: Job status caching
+- **CDN**: Image delivery optimization
+- **Database**: Query result caching
 
-The Docker setup works on any container platform:
+### Scaling Considerations
+- **Horizontal Scaling**: Multiple backend instances
+- **Database Optimization**: Indexing and query optimization
+- **Storage Scaling**: R2 automatic scaling
+- **Load Balancing**: Traffic distribution
 
-- **Railway** -- connect your repo, set environment variables, deploy
-- **Fly.io** -- `fly launch` from the `backend/` directory
-- **AWS ECS / Fargate** -- push the Docker image to ECR and create a task definition
-- **Google Cloud Run** -- deploy the container image directly
-- **DigitalOcean App Platform** -- connect your repo and configure
+## 🔧 Development
+
+### Code Style
+- **Python**: Black formatter, Pylint for linting
+- **TypeScript**: ESLint with TypeScript rules
+- **Git**: Conventional commits
+
+### Testing
+- **Backend**: Pytest for API testing
+- **Frontend**: Vitest for component testing
+- **Integration**: End-to-end testing with Playwright
+
+### Contributing
+1. Fork the repository
+2. Create a feature branch
+3. Make changes with tests
+4. Submit a pull request
+
+## 📞 Support
+
+### Documentation
+- [Architecture Guide](docs/architecture.md)
+- [API Documentation](docs/CODEBASE_DEEP_DIVE.md)
+- [Security Setup](docs/ENCRYPTION_SETUP.md)
+
+### Community
+- GitHub Issues for bug reports
+- Discussions for feature requests
+- Wiki for user guides
+
+### Enterprise Support
+- Priority support for enterprise accounts
+- Custom deployment assistance
+- SLA-backed uptime guarantees
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+## 📊 Metrics
+
+- **Response Time**: < 2 seconds for API calls
+- **Uptime**: 99.9% availability target
+- **Concurrent Users**: Support for 1000+ concurrent users
+- **Image Generation**: Sub-minute generation times
+
+## 🔮 Future Roadmap
+
+- [ ] Multi-language support
+- [ ] Advanced image editing tools
+- [ ] Team collaboration features
+- [ ] Advanced analytics dashboard
+- [ ] Mobile app development
+- [ ] Plugin ecosystem
 
 ---
 
-## Troubleshooting
-
-### Common Errors
-
-| Error | Cause | Fix |
-|---|---|---|
-| `401: Invalid API key` | API key not found or hash mismatch | Verify key exists in the `api_keys` table and is active |
-| `401: Authentication failed` | JWT token expired or invalid | Refresh the Supabase auth token |
-| `402: Insufficient credits` | User has no credits remaining | Add credits via admin panel or purchase |
-| `404: Model not found` | Model ID not in registry or database | Check `/v1/models` for available models |
-| `429: Rate limit exceeded` | Too many requests | Wait and retry, or increase limits in DB |
-| `500: Internal server error` | Unhandled backend exception | Check server logs for stack trace |
-
-### Debugging
-
-```bash
-# Check API health
-curl http://localhost:8000/health
-
-# View FastAPI auto-generated docs
-open http://localhost:8000/docs
-
-# Check Docker logs
-docker compose logs -f api
-docker compose logs -f worker
-
-# Test with echo model (no external provider needed)
-curl http://localhost:8000/v1/chat/completions \
-  -H "Authorization: Bearer sk-your-key" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"echo","messages":[{"role":"user","content":"test"}]}'
-```
-
-### Adding a New Provider
-
-1. Create `backend/app/adapters/your_provider.py`
-2. Inherit from `BaseProviderAdapter` in `backend/app/adapters/base.py`
-3. Implement all abstract methods (`chat_completion`, `chat_completion_stream`, `completion`, `embeddings`)
-4. Register models in `backend/app/adapters/registry.py`
-5. Add any new environment variables to `backend/app/config.py` and `backend/.env.example`
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| API Framework | FastAPI 0.109 |
-| Runtime | Python 3.11 / Uvicorn |
-| Auth & Database | Supabase (PostgreSQL) |
-| Object Storage | Cloudflare R2 (S3-compatible) |
-| Job Queue | Cloudflare Queues (with DB fallback) |
-| Image Provider | Flux (deepimg.ai) |
-| Frontend | React 18 / Vite / TailwindCSS |
-| Containerization | Docker / Docker Compose |
-
----
-
-## License
-
-See [LICENSE](LICENSE) for details.
+**Visuluxe** - Enterprise AI Image Generation Platform

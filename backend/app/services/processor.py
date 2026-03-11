@@ -194,16 +194,16 @@ class ImageProcessor:
     
     @classmethod
     async def start_processing_loop(cls):
-        """Start the continuous job processing loop"""
-        logger.info("Starting image processing loop")
+        """Start the continuous job processing loop with priority support"""
+        logger.info("Starting image processing loop with priority queue")
         
         while True:
             try:
-                # Get next pending job
-                job = await DatabaseService.get_next_pending_job()
+                # Get next job based on priority (Enterprise > Pro > Free)
+                job = await DatabaseService.get_job_priority_queue()
                 
                 if job:
-                    logger.info(f"Processing job: {job['id']}")
+                    logger.info(f"Processing priority job: {job['id']} (Priority: {job.get('priority', 1)})")
                     await cls.process_job(job)
                 else:
                     # No jobs, sleep briefly

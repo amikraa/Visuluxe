@@ -20,6 +20,7 @@ const SignUp = lazy(() => import("./pages/SignUp"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Generate = lazy(() => import("./pages/Generate"));
 const Pricing = lazy(() => import("./pages/Pricing"));
+const ModelCatalog = lazy(() => import("./pages/ModelCatalog"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -112,6 +113,7 @@ const App = () => (
                   <Route path="/signin" element={<SignIn />} />
                   <Route path="/signup" element={<SignUp />} />
                   <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/models" element={<ModelCatalog />} />
                   
                   {/* Protected user routes */}
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

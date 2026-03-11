@@ -17,7 +17,7 @@ class ProviderService:
     @classmethod
     async def get_available_models(cls, user_id: str) -> List[Dict[str, Any]]:
         sb = cls.get_client()
-        profile_response = sb.table("profiles").select("account_type").eq("user_id", user_id).single().execute()
+        profile_response = sb.table("profiles").select("plan_type, account_type").eq("user_id", user_id).single().execute()
         account_type = profile_response.data.get("account_type", "normal") if profile_response.data else "normal"
         
         if account_type == "partner":

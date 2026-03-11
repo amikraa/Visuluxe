@@ -52,6 +52,10 @@ class Settings(BaseSettings):
     
     # Provider Settings
     flux_api_url: str = ""
+    
+    # Telegram Configuration
+    telegram_bot_token: str = ""
+    telegram_admin_chat_id: str = ""
 
 
 @lru_cache()

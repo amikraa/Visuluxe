@@ -33,19 +33,80 @@ class DatabaseService:
         if model_response.data:
             model_uuid = model_response.data[0]["id"]
         
+        # Get user account type and username for priority calculation
+        user_id = job_data.get("user_id")
+        plan_type = "free"
+        account_type = "normal"
+        username = ""
+        priority = 1
+        
+        if user_id:
+            user_response = sb.table("profiles").select("plan_type, account_type, username").eq("user_id", user_id).execute()
+            if user_response.data:
+                plan_type = user_response.data[0].get("plan_type", "free")
+                account_type = user_response.data[0].get("account_type", "normal")
+                username = user_response.data[0].get("username", "")
+                
+                # Set priority based on plan type
+                if plan_type == "enterprise":
+                    priority = 10
+                elif plan_type == "pro":
+                    priority = 5
+                else:
+                    priority = 1
+        
+        # Calculate credits and costs
+        credits_used = job_data.get("n", 1)  # Default to 1 credit per image
+        provider_credit_cost = 0
+        platform_profit = 0
+        
+        # Get provider configuration for cost calculation
+        provider_config_response = sb.table("provider_configurations").select("*").eq("provider_id", "flux").execute()
+        if provider_config_response.data:
+            provider_config = provider_config_response.data[0]
+            provider_credit_cost = provider_config.get("cost_per_generation", 0) * credits_used
+            platform_profit = credits_used - provider_credit_cost
+        
         sb.table("generation_jobs").insert({
             "job_id": job_id,
-            "user_id": job_data.get("user_id"),
+            "user_id": user_id,
             "status": "pending",
-            "prompt": job_data.get("prompt"),
-            "negative_prompt": job_data.get("negative_prompt"),
+            "prompt": job_data.get("prompt", ""),
+            "negative_prompt": job_data.get("negative_prompt", ""),
             "model_id": model_uuid,  # Store the actual UUID, not the model name
             "size": job_data.get("size", "1024x1024"),
             "num_images": job_data.get("n", 1),
-            "expires_at": (datetime.utcnow() + timedelta(minutes=ttl_minutes)).isoformat()
+            "expires_at": (datetime.utcnow() + timedelta(minutes=ttl_minutes)).isoformat(),
+            "account_type": account_type,
+            "priority": priority,
+            "job_owner_username": username,
+            "provider_credit_cost": provider_credit_cost,
+            "platform_profit": platform_profit,
+            "model_name": model_name,
+            "provider_name": "Flux"
         }).execute()
         
-        logger.info(f"Stored pending job {job_id} with model {model_name} (UUID: {model_uuid})")
+        # Log job creation
+        await cls.log_job_event(
+            job_id=job_id,
+            user_id=user_id or "",
+            username=username,
+            account_type=account_type,
+            prompt=job_data.get("prompt", ""),
+            negative_prompt=job_data.get("negative_prompt", ""),
+            model_name=model_name,
+            model_id=model_uuid or "",
+            provider_name="Flux",
+            provider_id="flux",
+            credits_used=credits_used,
+            provider_credit_cost=provider_credit_cost,
+            platform_profit=platform_profit,
+            status="pending",
+            log_type="created",
+            metadata={"job_data": job_data}
+        )
+        
+        logger.info(f"Stored pending job {job_id} with model {model_name} (UUID: {model_uuid}), priority: {priority}, account_type: {account_type}")
         return job_id
     
     @classmethod
@@ -227,3 +288,187 @@ class DatabaseService:
         except Exception as e:
             logger.error(f"Error terminating job {job_id}: {e}")
             return False
+    
+    @classmethod
+    async def log_job_event(cls, job_id: str, user_id: str, username: str, account_type: str, 
+                           prompt: str, negative_prompt: str, model_name: str, model_id: str,
+                           provider_name: str, provider_id: str, credits_used: float,
+                           provider_credit_cost: float, platform_profit: float, status: str,
+                           image_url: str = None, failure_reason: str = None, 
+                           processing_time_ms: int = None, log_type: str = "created",
+                           metadata: dict = None):
+        """Log job events to job_logs table and send Telegram notifications"""
+        sb = cls.get_client()
+        
+        log_data = {
+            "job_id": job_id,
+            "user_id": user_id,
+            "username": username,
+            "account_type": account_type,
+            "prompt": prompt,
+            "negative_prompt": negative_prompt,
+            "model_name": model_name,
+            "model_id": model_id,
+            "provider_name": provider_name,
+            "provider_id": provider_id,
+            "credits_used": credits_used,
+            "provider_credit_cost": provider_credit_cost,
+            "platform_profit": platform_profit,
+            "status": status,
+            "log_type": log_type
+        }
+        
+        if image_url:
+            log_data["image_url"] = str(image_url)
+        if failure_reason:
+            log_data["failure_reason"] = str(failure_reason)
+        if processing_time_ms:
+            log_data["processing_time_ms"] = int(processing_time_ms)
+        if metadata:
+            log_data["metadata"] = metadata
+        
+        sb.table("job_logs").insert(log_data).execute()
+        logger.info(f"Logged job event: {job_id} - {log_type} - {status}")
+        
+        # Send Telegram notification for important events
+        if status in ["completed", "failed"]:
+            from app.services.telegram_logger import log_image_generation_event
+            await log_image_generation_event(
+                username=username,
+                user_id=user_id,
+                account_type=account_type,
+                job_id=job_id,
+                prompt=prompt,
+                model_name=model_name,
+                model_id=model_id,
+                provider_name=provider_name,
+                provider_id=provider_id,
+                credits_used=credits_used,
+                status=status,
+                image_url=image_url,
+                failure_reason=failure_reason
+            )
+    
+    @classmethod
+    async def get_jobs_by_status(cls, status: str, limit: int = 100) -> List[dict]:
+        """Get jobs by status with pagination"""
+        sb = cls.get_client()
+        response = sb.table("generation_jobs").select("*").eq("status", status).order("created_at", desc=True).limit(limit).execute()
+        return response.data or []
+    
+    @classmethod
+    async def get_jobs_by_user(cls, user_id: str, limit: int = 100) -> List[dict]:
+        """Get jobs by user with pagination"""
+        sb = cls.get_client()
+        response = sb.table("generation_jobs").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
+        return response.data or []
+    
+    @classmethod
+    async def cancel_job(cls, job_id: str, cancelled_by: str = None) -> bool:
+        """Cancel a pending or processing job"""
+        try:
+            sb = cls.get_client()
+            
+            # Get the job to check if it exists and can be cancelled
+            job_response = sb.table("generation_jobs").select("*").eq("job_id", job_id).execute()
+            
+            if not job_response.data:
+                logger.warning(f"Job {job_id} not found")
+                return False
+            
+            job = job_response.data[0]
+            
+            # Only allow cancellation of pending or processing jobs
+            if job["status"] not in ["pending", "processing"]:
+                logger.warning(f"Cannot cancel job {job_id} with status {job['status']}")
+                return False
+            
+            # Update job status to cancelled
+            update_data = {
+                "status": "cancelled",
+                "cancelled_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat()
+            }
+            
+            if cancelled_by:
+                update_data["cancelled_by"] = cancelled_by
+            
+            sb.table("generation_jobs").update(update_data).eq("job_id", job_id).execute()
+            
+            # Log the cancellation
+            await cls.log_job_event(
+                job_id=job_id,
+                user_id=job["user_id"],
+                username=job.get("job_owner_username", ""),
+                account_type=job.get("account_type", "normal"),
+                prompt=job.get("prompt", ""),
+                negative_prompt=job.get("negative_prompt", ""),
+                model_name=job.get("model_name", ""),
+                model_id=job.get("model_id", ""),
+                provider_name=job.get("provider_name", ""),
+                provider_id="flux",  # Default provider
+                credits_used=job.get("num_images", 1),
+                provider_credit_cost=job.get("provider_credit_cost", 0),
+                platform_profit=job.get("platform_profit", 0),
+                status="cancelled",
+                log_type="cancelled",
+                failure_reason="User cancelled"
+            )
+            
+            logger.info(f"Cancelled job {job_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error cancelling job {job_id}: {e}")
+            return False
+    
+    @classmethod
+    async def get_job_priority_queue(cls) -> Optional[dict]:
+        """Get next job based on priority (Enterprise > Pro > Free)"""
+        sb = cls.get_client()
+        
+        # Get pending jobs ordered by priority (desc) and then by created_at (asc)
+        pending_response = sb.table("generation_jobs").select("*").eq("status", "pending").order("priority", desc=True).order("created_at", asc=True).limit(1).execute()
+        
+        if pending_response.data:
+            job = pending_response.data[0]
+            # Update job status to processing
+            sb.table("generation_jobs").update({
+                "status": "processing", 
+                "started_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat()
+            }).eq("job_id", job["job_id"]).execute()
+            
+            # Log job start
+            await cls.log_job_event(
+                job_id=job["job_id"],
+                user_id=job["user_id"],
+                username=job.get("job_owner_username", ""),
+                account_type=job.get("account_type", "normal"),
+                prompt=job.get("prompt", ""),
+                negative_prompt=job.get("negative_prompt", ""),
+                model_name=job.get("model_name", ""),
+                model_id=job.get("model_id", ""),
+                provider_name=job.get("provider_name", ""),
+                provider_id="flux",
+                credits_used=job.get("num_images", 1),
+                provider_credit_cost=job.get("provider_credit_cost", 0),
+                platform_profit=job.get("platform_profit", 0),
+                status="processing",
+                log_type="started"
+            )
+            
+            return {
+                "id": job["job_id"],
+                "data": {
+                    "user_id": job["user_id"],
+                    "prompt": job["prompt"],
+                    "negative_prompt": job.get("negative_prompt"),
+                    "model": job.get("model_id"),
+                    "size": job.get("size", "1024x1024"),
+                    "n": job.get("num_images", 1)
+                }
+            }
+        
+        logger.info("No pending jobs found in priority queue")
+        return None

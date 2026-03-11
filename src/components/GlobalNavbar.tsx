@@ -39,6 +39,7 @@ export function GlobalNavbar() {
 
   const navLinks = [
     { label: 'Home', to: '/' },
+    { label: 'Models', to: '/models' },
     { label: 'Docs', to: '/docs' },
     { label: 'Pricing', to: '/pricing' },
   ];
