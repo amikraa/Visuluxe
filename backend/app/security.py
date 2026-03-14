@@ -218,3 +218,33 @@ async def get_authenticated_user(
         status_code=401,
         detail="Authentication required. Provide an API key via Authorization: Bearer <key> or X-API-Key header.",
     )
+
+
+async def get_current_admin(
+    authorization: str = Header(None),
+    x_api_key: str = Header(None),
+    x_internal_secret: str = Header(None),
+    x_user_id: str = Header(None),
+    x_api_key_id: str = Header(None),
+) -> dict:
+    """
+    Admin authentication dependency.
+    
+    First authenticates the user, then checks if they have admin privileges.
+    """
+    user = await get_authenticated_user(
+        authorization=authorization,
+        x_api_key=x_api_key,
+        x_internal_secret=x_internal_secret,
+        x_user_id=x_user_id,
+        x_api_key_id=x_api_key_id
+    )
+    
+    # Check admin privileges
+    sb = get_supabase()
+    response = sb.table("user_roles").select("role").eq("user_id", user["user_id"]).in_("role", ["admin", "super_admin"]).execute()
+    
+    if not response.data:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    return user

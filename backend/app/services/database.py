@@ -28,8 +28,8 @@ class DatabaseService:
         model_name = job_data.get("model", "flux-dev")
         model_uuid = None
         
-        # Query ai_models table to get the UUID for this model name
-        model_response = sb.table("ai_models").select("id").eq("model_id", model_name).execute()
+        # Query models table to get the UUID for this model name
+        model_response = sb.table("models").select("id").eq("model_id", model_name).execute()
         if model_response.data:
             model_uuid = model_response.data[0]["id"]
         
@@ -231,6 +231,8 @@ class DatabaseService:
         if model_id and (not isinstance(model_id, str) or len(str(model_id)) != 36 or '-' not in str(model_id)):
             logger.warning(f"Invalid model_id format: {model_id}, setting to None")
             model_id = None
+        else:
+            model_id = str(model_id) if model_id else ""
             
         for img in images:
             sb.table("images").insert({
@@ -428,7 +430,7 @@ class DatabaseService:
         sb = cls.get_client()
         
         # Get pending jobs ordered by priority (desc) and then by created_at (asc)
-        pending_response = sb.table("generation_jobs").select("*").eq("status", "pending").order("priority", desc=True).order("created_at", asc=True).limit(1).execute()
+        pending_response = sb.table("generation_jobs").select("*").eq("status", "pending").order("priority", desc=True).order("created_at", desc=False).limit(1).execute()
         
         if pending_response.data:
             job = pending_response.data[0]

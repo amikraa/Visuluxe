@@ -21,18 +21,18 @@ class ProviderService:
         account_type = profile_response.data.get("account_type", "normal") if profile_response.data else "normal"
         
         if account_type == "partner":
-            response = sb.table("ai_models").select("*").eq("status", "active").execute()
+            response = sb.table("models").select("*").eq("status", "active").execute()
         elif account_type == "admin":
-            response = sb.table("ai_models").select("*").execute()
+            response = sb.table("models").select("*").execute()
         else:
-            response = sb.table("ai_models").select("*").eq("status", "active").eq("access_level", "public").execute()
+            response = sb.table("models").select("*").eq("status", "active").execute()
         
         return response.data or []
     
     @classmethod
     async def get_model_info(cls, model_id: str) -> Optional[Dict[str, Any]]:
         sb = cls.get_client()
-        response = sb.table("ai_models").select("*, providers(*)").eq("id", model_id).single().execute()
+        response = sb.table("models").select("*").eq("id", model_id).single().execute()
         return response.data
     
     @classmethod

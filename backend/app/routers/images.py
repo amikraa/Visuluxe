@@ -50,12 +50,23 @@ async def create_image_generation(
             f"Insufficient credits. Required: {body.n}, available: {credit_check.get('available', 0)}"
         )
 
+    # Validate model status (maintenance enforcement)
+    model_id = body.model or "flux-dev"
+    from app.services.provider import ProviderService
+    model_info = await ProviderService.get_model_info(model_id)
+    
+    if model_info and model_info.get("status") == "maintenance":
+        raise HTTPException(
+            status_code=503,
+            detail=f"Model '{model_info.get('name', model_id)}' is currently under maintenance. Please try again later."
+        )
+
     # Enqueue the job
     job_data = {
         "user_id": user_id,
         "prompt": body.prompt,
         "negative_prompt": body.negative_prompt,
-        "model": body.model or "flux-dev",
+        "model": model_id,
         "size": body.size or "1024x1024",
         "n": body.n,
         "quality": body.quality,

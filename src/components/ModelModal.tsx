@@ -6,7 +6,30 @@ import { CodeBlock } from './CodeBlock';
 import { InfoBox } from './InfoBox';
 
 interface ModelModalProps {
-  model: any;
+  model: {
+    id: string;
+    model_id: string;
+    name: string;
+    description: string;
+    tier: string;
+    capabilities: Record<string, boolean>;
+    max_images: number;
+    supports_i2i: boolean;
+    processing_type: string;
+    max_wait_time: string;
+    supported_sizes: string[];
+    status: string;
+    providers: Array<{
+      id: string;
+      provider_id: string;
+      provider_name: string;
+      provider_model_id: string;
+      provider_cost: number;
+      platform_price: number;
+      max_images_supported: number;
+      status: string;
+    }>;
+  };
   isOpen: boolean;
   onClose: () => void;
   onGenerate: () => void;
@@ -22,7 +45,7 @@ const getCapabilityIcon = (capability: string) => {
 };
 
 const getProviderIcon = (provider: string) => {
-  switch (provider) {
+  switch (provider.toLowerCase()) {
     case 'flux': return <Zap className="h-4 w-4" />;
     case 'openai': return <Globe className="h-4 w-4" />;
     case 'stability': return <Shield className="h-4 w-4" />;
@@ -33,8 +56,8 @@ const getProviderIcon = (provider: string) => {
 export function ModelModal({ model, isOpen, onClose, onGenerate }: ModelModalProps) {
   if (!isOpen || !model) return null;
 
-  const minPrice = Math.min(...Object.values(model.pricing).map(v => Number(v)));
-  const hasI2ISupport = model.i2i_support;
+  const minPrice = Math.min(...model.providers.map(p => p.platform_price));
+  const hasI2ISupport = model.supports_i2i;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
@@ -105,11 +128,11 @@ export function ModelModal({ model, isOpen, onClose, onGenerate }: ModelModalPro
                   </div>
                   <div className="flex items-center justify-between py-2 border-b border-gray-700/50">
                     <span className="text-gray-400">Processing Type</span>
-                    <Badge variant="outline" className="text-xs">{model.processing}</Badge>
+                    <Badge variant="outline" className="text-xs">{model.processing_type}</Badge>
                   </div>
                   <div className="flex items-center justify-between py-2">
                     <span className="text-gray-400">Max Wait Time</span>
-                    <Badge variant="outline" className="text-xs">{model.max_wait}</Badge>
+                    <Badge variant="outline" className="text-xs">{model.max_wait_time}</Badge>
                   </div>
                 </div>
               </div>
@@ -153,10 +176,10 @@ export function ModelModal({ model, isOpen, onClose, onGenerate }: ModelModalPro
               <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-gray-300 mb-3">Provider Support</h3>
                 <div className="grid grid-cols-2 gap-2">
-                  {Object.entries(model.pricing).map(([provider, price]) => (
-                    <Badge key={provider} variant="default" className="text-xs bg-gray-700/50 border-gray-600/50 text-gray-300">
-                      {getProviderIcon(provider)}
-                      <span className="ml-1 capitalize">{provider}</span>
+                  {model.providers.map((provider) => (
+                    <Badge key={provider.provider_id} variant="default" className="text-xs bg-gray-700/50 border-gray-600/50 text-gray-300">
+                      {getProviderIcon(provider.provider_name)}
+                      <span className="ml-1 capitalize">{provider.provider_name}</span>
                       <span className="ml-2 text-xs">✅</span>
                     </Badge>
                   ))}
@@ -170,15 +193,15 @@ export function ModelModal({ model, isOpen, onClose, onGenerate }: ModelModalPro
               <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-gray-300 mb-3">Pricing by Provider</h3>
                 <div className="space-y-3">
-                  {Object.entries(model.pricing).map(([provider, price]) => (
-                    <div key={provider} className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg border border-gray-600/50">
+                  {model.providers.map((provider) => (
+                    <div key={provider.provider_id} className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg border border-gray-600/50">
                       <div className="flex items-center gap-2">
-                        {getProviderIcon(provider)}
-                        <span className="text-sm text-gray-300 capitalize">{provider}</span>
+                        {getProviderIcon(provider.provider_name)}
+                        <span className="text-sm text-gray-300 capitalize">{provider.provider_name}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <DollarSign className="h-3 w-3 text-green-400" />
-                        <span className="text-green-400 font-bold text-sm">{price} credits</span>
+                        <span className="text-green-400 font-bold text-sm">{provider.platform_price} credits</span>
                       </div>
                     </div>
                   ))}
@@ -187,72 +210,7 @@ export function ModelModal({ model, isOpen, onClose, onGenerate }: ModelModalPro
                   Starting at <span className="text-green-400 font-bold">{minPrice} credits</span> per image
                 </div>
               </div>
-
-              {/* Endpoints */}
-              <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-gray-300 mb-3">API Endpoints</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between p-2 bg-gray-700/50 rounded border border-gray-600/50">
-                    <span className="text-xs text-gray-300 font-mono">POST</span>
-                    <span className="text-xs text-gray-300 font-mono">{model.endpoints.generate}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2 bg-gray-700/50 rounded border border-gray-600/50">
-                    <span className="text-xs text-gray-300 font-mono">GET</span>
-                    <span className="text-xs text-gray-300 font-mono">{model.endpoints.task}</span>
-                  </div>
-                </div>
-              </div>
             </div>
-          </div>
-
-          {/* Code Examples Section */}
-          <div className="mt-8 space-y-6">
-            <h3 className="text-lg font-semibold text-white">Code Examples</h3>
-            
-            {/* Text-to-Image Example */}
-            <CodeBlock
-              title="Text-to-Image CURL"
-              code={model.code_examples.text_to_image}
-              language="bash"
-            />
-
-            {/* Image-to-Image Example (if supported) */}
-            {hasI2ISupport && model.code_examples.image_to_image && (
-              <CodeBlock
-                title="Image-to-Image CURL"
-                code={String(model.code_examples.image_to_image)}
-                language="bash"
-              />
-            )}
-
-            {/* Async Polling Example */}
-            <CodeBlock
-              title="Async Polling Example"
-              code={`Step 1: Submit generation request
-
-${model.code_examples.text_to_image.split('\n').slice(0, 4).join('\n')}
-
-Response:
-{
-  "task_id": "task_${model.model_id}_123",
-  "status": "pending",
-  "poll_url": "${model.endpoints.task.replace('{task_id}', 'task_${model.model_id}_123')}"
-}
-
-Step 2: Poll result
-
-GET ${model.endpoints.task.replace('{task_id}', 'task_${model.model_id}_123')}
-
-Response:
-{
-  "task_id": "task_${model.model_id}_123",
-  "status": "completed",
-  "result": {
-    "images": ["https://..."]
-  }
-}`}
-              language="bash"
-            />
           </div>
 
           {/* Footer Actions */}

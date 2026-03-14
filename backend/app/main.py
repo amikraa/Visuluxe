@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 import logging
 
 from app.config import settings
-from app.routers import images, models, admin, auth, chat_completions, completions, embeddings
+from app.routers import images, models, admin, auth, chat_completions, completions, embeddings, public_models, admin_models
 from app.errors import (
     openai_http_exception_handler,
     openai_validation_exception_handler,

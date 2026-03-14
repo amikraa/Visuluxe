@@ -10,9 +10,6 @@ import { ModelModal } from '@/components/ModelModal';
 import { CodeBlock } from '@/components/CodeBlock';
 import { InfoBox } from '@/components/InfoBox';
 
-// Import models data
-import modelsData from '@/data/models.json';
-
 interface Model {
   id: string;
   model_id: string;
@@ -21,20 +18,34 @@ interface Model {
   tier: string;
   capabilities: Record<string, boolean>;
   max_images: number;
-  i2i_support: boolean;
-  processing: string;
-  max_wait: string;
+  supports_i2i: boolean;
+  processing_type: string;
+  max_wait_time: string;
   supported_sizes: string[];
-  pricing: Record<string, number>;
-  endpoints: {
-    generate: string;
-    task: string;
-  };
-  code_examples: {
-    text_to_image: string;
-    image_to_image?: string;
-    polling: string;
-  };
+  status: string;
+  created_at: string;
+  updated_at: string;
+  providers: Array<{
+    id: string;
+    provider_id: string;
+    provider_name: string;
+    provider_model_id: string;
+    provider_cost: number;
+    platform_price: number;
+    max_images_supported: number;
+    status: string;
+  }>;
+}
+
+interface ModelProvider {
+  id: string;
+  provider_id: string;
+  provider_name: string;
+  provider_model_id: string;
+  provider_cost: number;
+  platform_price: number;
+  max_images_supported: number;
+  status: string;
 }
 
 export default function ModelCatalog() {
@@ -43,8 +54,25 @@ export default function ModelCatalog() {
   const [providerFilter, setProviderFilter] = useState<string>('all');
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [models, setModels] = useState<Model[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const models: Model[] = modelsData.models;
+  // Fetch models from API
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const response = await fetch('/api/models');
+        const data = await response.json();
+        setModels(data);
+      } catch (error) {
+        console.error('Failed to fetch models:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchModels();
+  }, []);
 
   const filteredModels = models.filter(model => {
     const searchLower = searchTerm.toLowerCase();
@@ -53,7 +81,7 @@ export default function ModelCatalog() {
                          model.description.toLowerCase().includes(searchLower);
     
     const matchesSize = sizeFilter === 'all' || model.supported_sizes.includes(sizeFilter);
-    const matchesProvider = providerFilter === 'all' || model.pricing[providerFilter];
+    const matchesProvider = providerFilter === 'all' || model.providers.some(p => p.provider_name.toLowerCase() === providerFilter);
     
     return matchesSearch && matchesSize && matchesProvider;
   });

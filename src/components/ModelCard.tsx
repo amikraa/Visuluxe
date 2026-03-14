@@ -4,7 +4,30 @@ import { Button } from '@/components/ui/button';
 import { Sparkles, Eye, EyeOff, Settings, Globe, Zap, Shield, Code, Clock, DollarSign } from 'lucide-react';
 
 interface ModelCardProps {
-  model: any;
+  model: {
+    id: string;
+    model_id: string;
+    name: string;
+    description: string;
+    tier: string;
+    capabilities: Record<string, boolean>;
+    max_images: number;
+    supports_i2i: boolean;
+    processing_type: string;
+    max_wait_time: string;
+    supported_sizes: string[];
+    status: string;
+    providers: Array<{
+      id: string;
+      provider_id: string;
+      provider_name: string;
+      provider_model_id: string;
+      provider_cost: number;
+      platform_price: number;
+      max_images_supported: number;
+      status: string;
+    }>;
+  };
   onClick: () => void;
   onGenerate: () => void;
 }
@@ -19,7 +42,7 @@ const getCapabilityIcon = (capability: string) => {
 };
 
 const getProviderIcon = (provider: string) => {
-  switch (provider) {
+  switch (provider.toLowerCase()) {
     case 'flux': return <Zap className="h-3 w-3" />;
     case 'openai': return <Globe className="h-3 w-3" />;
     case 'stability': return <Shield className="h-3 w-3" />;
@@ -44,8 +67,8 @@ export function ModelCard({ model, onClick, onGenerate }: ModelCardProps) {
     }
   };
 
-  const minPrice = Math.min(...Object.values(model.pricing).map(v => Number(v)));
-  const hasI2ISupport = model.i2i_support;
+  const minPrice = Math.min(...model.providers.map(p => p.platform_price));
+  const hasI2ISupport = model.supports_i2i;
 
   return (
     <div 
@@ -111,10 +134,10 @@ export function ModelCard({ model, onClick, onGenerate }: ModelCardProps) {
       {/* Provider Support */}
       <div className="mb-4">
         <div className="flex flex-wrap gap-2">
-          {Object.entries(model.pricing).map(([provider, price]) => (
-            <Badge key={provider} variant="default" className="text-xs bg-gray-800/50 border-gray-600/50 text-gray-300 hover:bg-gray-700/50 transition-colors">
-              {getProviderIcon(provider)}
-              <span className="ml-1 capitalize">{provider}</span>
+          {model.providers.map((provider) => (
+            <Badge key={provider.provider_id} variant="default" className="text-xs bg-gray-800/50 border-gray-600/50 text-gray-300 hover:bg-gray-700/50 transition-colors">
+              {getProviderIcon(provider.provider_name)}
+              <span className="ml-1 capitalize">{provider.provider_name}</span>
             </Badge>
           ))}
         </div>
@@ -128,7 +151,7 @@ export function ModelCard({ model, onClick, onGenerate }: ModelCardProps) {
         </div>
         <div className="flex items-center gap-2 text-gray-400">
           <Clock className="w-3 h-3" />
-          <span>Wait: {model.max_wait}</span>
+          <span>Wait: {model.max_wait_time}</span>
         </div>
         <div className="flex items-center gap-2 text-gray-400">
           <EyeOff className="w-3 h-3" />
@@ -136,7 +159,7 @@ export function ModelCard({ model, onClick, onGenerate }: ModelCardProps) {
         </div>
         <div className="flex items-center gap-2 text-gray-400">
           <Clock className="w-3 h-3" />
-          <span>Type: {model.processing}</span>
+          <span>Type: {model.processing_type}</span>
         </div>
       </div>
 
