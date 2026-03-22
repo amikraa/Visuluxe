@@ -111,13 +111,19 @@ class QueueService:
     @classmethod
     async def pause_queue(cls):
         """Pause job processing"""
+        from app.services.config_service import set_config
+
         cls._queue_paused = True
+        await set_config("queue_paused", True, "Queue paused at runtime", "system")
         logger.info("Queue processing paused")
     
     @classmethod
     async def resume_queue(cls):
         """Resume job processing"""
+        from app.services.config_service import set_config
+
         cls._queue_paused = False
+        await set_config("queue_paused", False, "Queue resumed at runtime", "system")
         logger.info("Queue processing resumed")
     
     @classmethod
@@ -132,7 +138,8 @@ class QueueService:
         
         try:
             max_concurrent_jobs = await get_config("max_concurrent_jobs", 10)
-            queue_paused = cls._queue_paused
+            queue_paused = await get_config("queue_paused", cls._queue_paused)
+            cls._queue_paused = bool(queue_paused)
             
             # Get pending job count from database
             from app.services.database import DatabaseService

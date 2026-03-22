@@ -60,7 +60,7 @@ export default function AdminModels() {
   const fetchModels = async () => {
     try {
       const { data, error } = await supabase
-        .from('ai_models')
+        .from('models')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -89,7 +89,7 @@ export default function AdminModels() {
     
     try {
       const { error } = await supabase
-        .from('ai_models')
+        .from('models')
         .update({ status: newStatus })
         .eq('id', model.id);
 
@@ -128,7 +128,7 @@ export default function AdminModels() {
 
     try {
       const { error } = await supabase
-        .from('ai_models')
+        .from('models')
         .delete()
         .eq('id', modelToDelete.id);
 

@@ -20,9 +20,9 @@ class DatabaseService:
         sb = cls.get_client()
         job_id = job["id"]
         job_data = job["data"]
-        
-        from app.config import settings
-        ttl_minutes = settings.default_image_ttl_minutes
+
+        from app.services.config_service import get_config
+        ttl_minutes = await get_config("default_image_ttl_minutes", 60)
         
         # Look up the model UUID from the model name
         model_name = job_data.get("model", "flux-dev")

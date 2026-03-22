@@ -101,7 +101,7 @@ export function ModelDialog({ open, onOpenChange, model, onSave }: ModelDialogPr
   useEffect(() => {
     const fetchModels = async () => {
       const { data } = await supabase
-        .from('ai_models')
+        .from('models')
         .select('id, name')
         .order('name');
       
@@ -248,7 +248,7 @@ export function ModelDialog({ open, onOpenChange, model, onSave }: ModelDialogPr
       if (model) {
         // Update existing model
         const { error } = await supabase
-          .from('ai_models')
+          .from('models')
           .update(modelData)
           .eq('id', model.id);
 
@@ -261,7 +261,7 @@ export function ModelDialog({ open, onOpenChange, model, onSave }: ModelDialogPr
       } else {
         // Create new model
         const { error } = await supabase
-          .from('ai_models')
+          .from('models')
           .insert([modelData]);
 
         if (error) throw error;

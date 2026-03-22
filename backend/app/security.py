@@ -12,27 +12,23 @@ This makes the API compatible with OpenAI SDKs that always send
 `Authorization: Bearer <key>`.
 """
 from fastapi import Header, HTTPException
-from supabase import create_client, Client
+from supabase.client import create_client, Client
 from app.config import settings
 import logging
 import hashlib
-import os
-from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
 # Supabase client singleton
-supabase: Client = None
+supabase: Client | None = None
 
 
 def get_supabase() -> Client:
     """Get or create the Supabase client singleton."""
     global supabase
     if supabase is None:
-        load_dotenv()
-
-        url = os.getenv("SUPABASE_URL") or settings.supabase_url
-        key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or settings.supabase_service_key
+        url = settings.supabase_url
+        key = settings.supabase_service_key
 
         if not url or not key:
             logger.error("Missing Supabase configuration!")
@@ -83,6 +79,7 @@ async def get_current_user(authorization: str) -> dict:
             .select("is_banned, ban_reason")
             .eq("user_id", user.id)
             .single()
+            .execute()
         )
 
         if profile_response.data and profile_response.data.get("is_banned"):

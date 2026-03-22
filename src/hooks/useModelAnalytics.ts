@@ -186,7 +186,7 @@ export function useModelConfigHistory(modelId: string | null) {
       const { data, error } = await supabase
         .from('admin_audit_logs')
         .select('*')
-        .eq('target_type', 'ai_models')
+        .eq('target_type', 'models')
         .eq('target_id', modelId)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -208,8 +208,8 @@ export function useModelInfo(modelId: string | null) {
     queryFn: async () => {
       if (!modelId) return null;
 
-      const { data, error } = await supabase
-        .from('ai_models')
+      const { data, error } = await (supabase as any)
+        .from('models')
         .select('*')
         .eq('id', modelId)
         .single();

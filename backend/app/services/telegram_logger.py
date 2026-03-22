@@ -25,9 +25,10 @@ class TelegramLogger:
             return
             
         from app.services.config_service import get_config
+        alerts_enabled = await get_config("telegram_alerts_enabled", False)
         self.bot_token = await get_config("telegram_bot_token", "")
         self.admin_chat_id = await get_config("telegram_admin_chat_id", "")
-        self.enabled = bool(self.bot_token and self.admin_chat_id)
+        self.enabled = bool(alerts_enabled and self.bot_token and self.admin_chat_id)
         self._initialized = True
         
         if not self.enabled:

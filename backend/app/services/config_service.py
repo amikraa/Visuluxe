@@ -33,6 +33,8 @@ class ConfigService:
         self._config_defaults = {
             # Job Processing
             "job_concurrency_limit": {"default": 10, "type": "int", "category": "job_processing"},
+            "max_concurrent_jobs": {"default": 10, "type": "int", "category": "job_processing"},
+            "queue_paused": {"default": False, "type": "bool", "category": "job_processing"},
             "max_concurrent_jobs_per_user": {"default": 2, "type": "int", "category": "job_processing"},
             "job_timeout_minutes": {"default": 30, "type": "int", "category": "job_processing"},
             "auto_retry_enabled": {"default": True, "type": "bool", "category": "job_processing"},
@@ -47,6 +49,7 @@ class ConfigService:
             
             # Storage Lifecycle
             "default_image_ttl_minutes": {"default": 60, "type": "int", "category": "storage"},
+            "r2_bucket_lifetime_days": {"default": 1, "type": "int", "category": "storage"},
             "max_image_size_mb": {"default": 10, "type": "int", "category": "storage"},
             "cleanup_interval_hours": {"default": 1, "type": "int", "category": "storage"},
             "enable_long_term_storage": {"default": False, "type": "bool", "category": "storage"},
@@ -184,7 +187,7 @@ class ConfigService:
             logger.error(f"Error getting config by category {category}: {e}")
             return {}
     
-    async def refresh(self, key: str = None):
+    async def refresh(self, key: Optional[str] = None):
         """Refresh configuration cache"""
         try:
             if key:
@@ -196,6 +199,10 @@ class ConfigService:
             logger.info(f"Configuration cache refreshed{' for ' + key if key else ''}")
         except Exception as e:
             logger.error(f"Error refreshing config cache: {e}")
+
+    async def reload(self, key: Optional[str] = None):
+        """Reload configuration cache (alias for refresh)."""
+        await self.refresh(key)
     
     def clear_cache(self):
         """Clear all cached configuration"""
@@ -334,9 +341,14 @@ async def get_config_by_category(category: str) -> Dict[str, Any]:
     return await config_service.get_by_category(category)
 
 
-async def refresh_config(key: str = None):
+async def refresh_config(key: Optional[str] = None):
     """Refresh configuration cache"""
     await config_service.refresh(key)
+
+
+async def reload_config(key: Optional[str] = None):
+    """Reload configuration cache"""
+    await config_service.reload(key)
 
 
 def clear_config_cache():

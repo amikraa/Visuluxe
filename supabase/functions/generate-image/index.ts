@@ -270,8 +270,8 @@ serve(async (req) => {
 
     if (model_id) {
       const { data: model } = await supabase
-        .from("ai_models")
-        .select("*, providers(*)")
+        .from("models")
+        .select("*")
         .eq("id", model_id)
         .single();
 
@@ -297,7 +297,7 @@ serve(async (req) => {
           if (model.fallback_model_id) {
             // Use fallback model
             const { data: fallbackModel } = await supabase
-              .from("ai_models")
+              .from("models")
               .select("*")
               .eq("id", model.fallback_model_id)
               .single();
@@ -594,18 +594,33 @@ serve(async (req) => {
         .eq("id", apiKeyId);
     }
 
-    // Update model usage count
+    // Update model analytics
     if (modelInfo?.id) {
-      const { data: currentModel } = await supabase
-        .from("ai_models")
-        .select("usage_count")
-        .eq("id", modelInfo.id)
-        .single();
-      
-      await supabase
-        .from("ai_models")
-        .update({ usage_count: (currentModel?.usage_count || 0) + 1 })
-        .eq("id", modelInfo.id);
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: currentAnalytics } = await supabase
+        .from("model_analytics")
+        .select("id,total_generations")
+        .eq("model_id", modelInfo.id)
+        .eq("date", today)
+        .maybeSingle();
+
+      if (currentAnalytics?.id) {
+        await supabase
+          .from("model_analytics")
+          .update({ total_generations: (currentAnalytics.total_generations || 0) + (num_images || 1) })
+          .eq("id", currentAnalytics.id);
+      } else {
+        await supabase
+          .from("model_analytics")
+          .insert({
+            model_id: modelInfo.id,
+            date: today,
+            total_generations: num_images || 1,
+            total_revenue: creditsCost,
+            total_provider_cost: 0,
+            profit: creditsCost,
+          });
+      }
     }
 
     // Log successful request

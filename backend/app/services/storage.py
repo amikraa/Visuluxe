@@ -112,6 +112,8 @@ class StorageService:
     async def upload_image_from_url(cls, image_url: str, user_id: str) -> Optional[Dict[str, Any]]:
         """Download image from URL and upload to R2 bucket with proper format detection"""
         try:
+            from app.services.config_service import get_config
+
             # Download the image
             async with aiohttp.ClientSession() as session:
                 async with session.get(image_url) as response:
@@ -132,9 +134,9 @@ class StorageService:
             
             # Upload to R2
             s3 = get_s3_client()
-            from app.services.config_service import get_config
             r2_bucket_name = await get_config("r2_bucket_name", "visuluxe-images")
             r2_public_base_url = await get_config("r2_public_base_url", "https://visuluxe.r2.cloudflarestorage.com")
+            r2_bucket_lifetime_days = await get_config("r2_bucket_lifetime_days", 1)
             
             s3.put_object(Bucket=r2_bucket_name, Key=r2_key, Body=image_data, ContentType=content_type)
             logger.info(f"Uploaded image to R2: {r2_key}")
@@ -155,7 +157,7 @@ class StorageService:
                 "format": format_name,
                 "extension": file_extension,
                 "content_type": content_type,
-                "expires_at": (datetime.utcnow() + timedelta(hours=24)).isoformat()
+                "expires_at": (datetime.utcnow() + timedelta(days=int(r2_bucket_lifetime_days))).isoformat()
             }
             
         except Exception as e:

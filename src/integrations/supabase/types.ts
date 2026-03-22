@@ -95,7 +95,7 @@ export type Database = {
         }
         Relationships: []
       }
-      ai_models: {
+      models: {
         Row: {
           access_level: Database["public"]["Enums"]["model_access_level"]
           api_endpoint: string | null
@@ -173,7 +173,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "ai_models_provider_id_fkey"
+            foreignKeyName: "models_provider_id_fkey"
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "providers"

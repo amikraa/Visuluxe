@@ -37,6 +37,7 @@ class ImageProcessor:
             # Get runtime configuration
             job_timeout_minutes = await get_config("job_timeout_minutes", 30)
             max_retry_attempts = await get_config("max_retry_attempts", 3)
+            cls.flux_api_url = await get_config("flux_api_url", cls.flux_api_url)
             
             # Update job status to processing
             await DatabaseService.update_job_status(job_id, "processing")
@@ -460,6 +461,21 @@ class ImageProcessor:
         
         while True:
             try:
+                # Dynamic queue controls from centralized config
+                from app.services.queue import QueueService
+                queue_status = await QueueService.get_queue_status()
+                if queue_status.get("queue_paused"):
+                    await asyncio.sleep(2)
+                    continue
+
+                max_concurrent_jobs = int(queue_status.get("max_concurrent_jobs", 10))
+                sb = DatabaseService.get_client()
+                processing_response = sb.table("generation_jobs").select("id").eq("status", "processing").execute()
+                processing_count = len(processing_response.data or [])
+                if processing_count >= max_concurrent_jobs:
+                    await asyncio.sleep(2)
+                    continue
+
                 # Get next job based on priority (Enterprise > Pro > Free)
                 job = await DatabaseService.get_job_priority_queue()
                 

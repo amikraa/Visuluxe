@@ -50,7 +50,7 @@ export function useImageDetails(imageId: string | null) {
           model_id,
           provider_id,
           metadata,
-          ai_models(name),
+          models(name),
           providers(name)
         `)
         .eq('id', imageId)
@@ -64,7 +64,7 @@ export function useImageDetails(imageId: string | null) {
       // Transform the response to flatten model and provider names
       return {
         ...data,
-        model_name: (data.ai_models as any)?.name || null,
+        model_name: (data.models as any)?.name || null,
         provider_name: (data.providers as any)?.name || null,
       } as ImageDetails;
     },

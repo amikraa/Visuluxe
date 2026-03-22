@@ -32,7 +32,7 @@ export default function AdminDashboard() {
 
         // Fetch active models count
         const { count: modelCount } = await supabase
-          .from('ai_models')
+          .from('models')
           .select('*', { count: 'exact', head: true })
           .eq('status', 'active');
 

@@ -216,7 +216,7 @@ export function useImagesByModel() {
     queryKey: ['admin-analytics-images-by-model'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('ai_models')
+        .from('models')
         .select('name, usage_count')
         .order('usage_count', { ascending: false })
         .limit(5);
