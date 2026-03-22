@@ -8,15 +8,13 @@ format expected by OpenAI SDKs, using the new dynamic model registry.
 import time
 import logging
 from typing import List, Optional
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import and_
 
-from app.security import get_authenticated_user
+from app.security import get_authenticated_user, get_current_admin
 from app.adapters.registry import list_supported_models
-from app.models.models import Model, ModelProvider, Provider
-from app.database import get_db
+from app.services.database import DatabaseService
 from app.errors import NotFoundError
 
 logger = logging.getLogger(__name__)
@@ -26,8 +24,7 @@ router = APIRouter()
 
 @router.get("/")
 async def list_models(
-    user: dict = Depends(get_authenticated_user),
-    db: Session = Depends(get_db)
+    user: dict = Depends(get_authenticated_user)
 ):
     """
     List available models.
@@ -40,46 +37,50 @@ async def list_models(
 
     # 1. Database-managed models from new model registry (only active models)
     try:
+        sb = DatabaseService.get_client()
+        
         # Get active models with their providers
-        db_models = db.query(Model).filter(Model.status == 'active').all()
+        models_response = sb.table("models").select("*").eq("status", "active").execute()
+        db_models = models_response.data or []
         
         for model in db_models:
-            if model.model_id not in seen_ids:
-                seen_ids.add(model.model_id)
+            if model["model_id"] not in seen_ids:
+                seen_ids.add(model["model_id"])
                 
                 # Get active providers for this model
-                providers = db.query(ModelProvider).filter(
-                    and_(
-                        ModelProvider.model_id == model.id,
-                        ModelProvider.status == 'active'
-                    )
-                ).all()
+                providers_response = sb.table("model_providers").select("*").eq("model_id", model["id"]).eq("status", "active").execute()
+                providers = providers_response.data or []
                 
                 # Get provider details
                 provider_details = []
-                for mp in providers:
-                    provider = db.query(Provider).filter(Provider.id == mp.provider_id).first()
-                    if provider:
-                        provider_details.append({
-                            "provider_id": str(provider.id),
-                            "provider_name": provider.name,
-                            "provider_model_id": mp.provider_model_id,
-                            "provider_cost": float(mp.provider_cost),
-                            "platform_price": float(mp.platform_price),
-                            "max_images_supported": mp.max_images_supported,
-                            "status": mp.status
-                        })
+                if providers:
+                    provider_ids = [p["provider_id"] for p in providers]
+                    provider_response = sb.table("providers").select("*").in_("id", provider_ids).execute()
+                    provider_dict = {p["id"]: p for p in provider_response.data or []}
+                    
+                    for mp in providers:
+                        provider = provider_dict.get(mp["provider_id"])
+                        if provider:
+                            provider_details.append({
+                                "provider_id": str(provider["id"]),
+                                "provider_name": provider["name"],
+                                "provider_model_id": mp["provider_model_id"],
+                                "provider_cost": float(mp["provider_cost"]),
+                                "platform_price": float(mp["platform_price"]),
+                                "max_images_supported": mp["max_images_supported"],
+                                "status": mp["status"]
+                            })
 
                 models.append({
-                    "id": model.model_id,
+                    "id": model["model_id"],
                     "object": "model",
-                    "created": int(time.mktime(model.created_at.timetuple())) if model.created_at else 0,
+                    "created": int(time.mktime(datetime.fromisoformat(model["created_at"]).timetuple())) if model.get("created_at") else 0,
                     "owned_by": "visuluxe",
                     "permission": [
                         {
-                            "id": f"modelperm-{model.model_id}",
+                            "id": f"modelperm-{model['model_id']}",
                             "object": "model_permission",
-                            "created": int(time.mktime(model.created_at.timetuple())) if model.created_at else 0,
+                            "created": int(time.mktime(datetime.fromisoformat(model["created_at"]).timetuple())) if model.get("created_at") else 0,
                             "allow_create_engine": False,
                             "allow_sampling": True,
                             "allow_logprobs": False,
@@ -91,19 +92,19 @@ async def list_models(
                             "is_blocking": False,
                         }
                     ],
-                    "root": model.model_id,
+                    "root": model["model_id"],
                     "parent": None,
                     # Additional fields for the new model registry
-                    "name": model.name,
-                    "description": model.description,
-                    "tier": model.tier,
-                    "max_images": model.max_images,
-                    "supports_i2i": model.supports_i2i,
-                    "processing_type": model.processing_type,
-                    "max_wait_time": model.max_wait_time,
-                    "capabilities": model.capabilities or {},
-                    "supported_sizes": model.supported_sizes or [],
-                    "status": model.status,
+                    "name": model.get("name", ""),
+                    "description": model.get("description", ""),
+                    "tier": model.get("tier", "Free"),
+                    "max_images": model.get("max_images", 1),
+                    "supports_i2i": model.get("supports_i2i", False),
+                    "processing_type": model.get("processing_type", "Async"),
+                    "max_wait_time": model.get("max_wait_time", "5 min"),
+                    "capabilities": model.get("capabilities", {}),
+                    "supported_sizes": model.get("supported_sizes", []),
+                    "status": model.get("status", "active"),
                     "providers": provider_details
                 })
     except Exception as e:
@@ -129,8 +130,7 @@ async def list_models(
 @router.get("/{model_id}")
 async def get_model(
     model_id: str, 
-    user: dict = Depends(get_authenticated_user),
-    db: Session = Depends(get_db)
+    user: dict = Depends(get_authenticated_user)
 ):
     """
     Retrieve a single model by ID.
@@ -139,47 +139,47 @@ async def get_model(
     """
     # Try new model registry first
     try:
-        model = db.query(Model).filter(
-            and_(
-                Model.model_id == model_id,
-                Model.status == 'active'
-            )
-        ).first()
+        sb = DatabaseService.get_client()
+        
+        # Get model from database
+        model_response = sb.table("models").select("*").eq("model_id", model_id).eq("status", "active").single().execute()
+        model = model_response.data if model_response.data else None
         
         if model:
             # Get active providers for this model
-            providers = db.query(ModelProvider).filter(
-                and_(
-                    ModelProvider.model_id == model.id,
-                    ModelProvider.status == 'active'
-                )
-            ).all()
+            providers_response = sb.table("model_providers").select("*").eq("model_id", model["id"]).eq("status", "active").execute()
+            providers = providers_response.data or []
             
             # Get provider details
             provider_details = []
-            for mp in providers:
-                provider = db.query(Provider).filter(Provider.id == mp.provider_id).first()
-                if provider:
-                    provider_details.append({
-                        "provider_id": str(provider.id),
-                        "provider_name": provider.name,
-                        "provider_model_id": mp.provider_model_id,
-                        "provider_cost": float(mp.provider_cost),
-                        "platform_price": float(mp.platform_price),
-                        "max_images_supported": mp.max_images_supported,
-                        "status": mp.status
-                    })
+            if providers:
+                provider_ids = [p["provider_id"] for p in providers]
+                provider_response = sb.table("providers").select("*").in_("id", provider_ids).execute()
+                provider_dict = {p["id"]: p for p in provider_response.data or []}
+                
+                for mp in providers:
+                    provider = provider_dict.get(mp["provider_id"])
+                    if provider:
+                        provider_details.append({
+                            "provider_id": str(provider["id"]),
+                            "provider_name": provider["name"],
+                            "provider_model_id": mp["provider_model_id"],
+                            "provider_cost": float(mp["provider_cost"]),
+                            "platform_price": float(mp["platform_price"]),
+                            "max_images_supported": mp["max_images_supported"],
+                            "status": mp["status"]
+                        })
 
             return {
-                "id": model.model_id,
+                "id": model["model_id"],
                 "object": "model",
-                "created": int(time.mktime(model.created_at.timetuple())) if model.created_at else 0,
+                "created": int(time.mktime(datetime.fromisoformat(model["created_at"]).timetuple())) if model.get("created_at") else 0,
                 "owned_by": "visuluxe",
                 "permission": [
                     {
-                        "id": f"modelperm-{model.model_id}",
+                        "id": f"modelperm-{model['model_id']}",
                         "object": "model_permission",
-                        "created": int(time.mktime(model.created_at.timetuple())) if model.created_at else 0,
+                        "created": int(time.mktime(datetime.fromisoformat(model["created_at"]).timetuple())) if model.get("created_at") else 0,
                         "allow_create_engine": False,
                         "allow_sampling": True,
                         "allow_logprobs": False,
@@ -191,19 +191,19 @@ async def get_model(
                         "is_blocking": False,
                     }
                 ],
-                "root": model.model_id,
+                "root": model["model_id"],
                 "parent": None,
                 # Additional fields for the new model registry
-                "name": model.name,
-                "description": model.description,
-                "tier": model.tier,
-                "max_images": model.max_images,
-                "supports_i2i": model.supports_i2i,
-                "processing_type": model.processing_type,
-                "max_wait_time": model.max_wait_time,
-                "capabilities": model.capabilities or {},
-                "supported_sizes": model.supported_sizes or [],
-                "status": model.status,
+                "name": model.get("name", ""),
+                "description": model.get("description", ""),
+                "tier": model.get("tier", "Free"),
+                "max_images": model.get("max_images", 1),
+                "supports_i2i": model.get("supports_i2i", False),
+                "processing_type": model.get("processing_type", "Async"),
+                "max_wait_time": model.get("max_wait_time", "5 min"),
+                "capabilities": model.get("capabilities", {}),
+                "supported_sizes": model.get("supported_sizes", []),
+                "status": model.get("status", "active"),
                 "providers": provider_details
             }
     except Exception as e:

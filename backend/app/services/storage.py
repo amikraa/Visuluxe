@@ -41,14 +41,17 @@ class StorageService:
     @classmethod
     async def upload_image(cls, image_bytes: bytes, user_id: str, job_id: str, content_type: str = "image/png") -> str:
         s3 = get_s3_client()
-        from app.config import settings
+        from app.services.config_service import get_config
+        
+        # Get R2 bucket name from configuration service
+        r2_bucket_name = await get_config("r2_bucket_name", "visuluxe-images")
         r2_key = f"images/{user_id}/{job_id}/{uuid.uuid4()}.png"
-        s3.put_object(Bucket=settings.R2_BUCKET_NAME, Key=r2_key, Body=image_bytes, ContentType=content_type)
+        s3.put_object(Bucket=r2_bucket_name, Key=r2_key, Body=image_bytes, ContentType=content_type)
         logger.info(f"Uploaded image to R2: {r2_key}")
         
         # Debug logging to confirm objects are present in R2
         try:
-            list_response = s3.list_objects_v2(Bucket=settings.R2_BUCKET_NAME)
+            list_response = s3.list_objects_v2(Bucket=r2_bucket_name)
             logger.info(f"R2 bucket contents after upload: {list_response.get('Contents', [])}")
         except Exception as e:
             logger.warning(f"Failed to list R2 bucket contents for verification: {e}")
@@ -129,16 +132,19 @@ class StorageService:
             
             # Upload to R2
             s3 = get_s3_client()
-            from app.config import settings
-            s3.put_object(Bucket=settings.R2_BUCKET_NAME, Key=r2_key, Body=image_data, ContentType=content_type)
+            from app.services.config_service import get_config
+            r2_bucket_name = await get_config("r2_bucket_name", "visuluxe-images")
+            r2_public_base_url = await get_config("r2_public_base_url", "https://visuluxe.r2.cloudflarestorage.com")
+            
+            s3.put_object(Bucket=r2_bucket_name, Key=r2_key, Body=image_data, ContentType=content_type)
             logger.info(f"Uploaded image to R2: {r2_key}")
             
             # Generate public URL using custom domain
-            public_url = f"{settings.R2_PUBLIC_BASE_URL}/{r2_key}"
+            public_url = f"{r2_public_base_url}/{r2_key}"
             
             # Debug logging to confirm objects are present in R2
             try:
-                list_response = s3.list_objects_v2(Bucket=settings.R2_BUCKET_NAME)
+                list_response = s3.list_objects_v2(Bucket=r2_bucket_name)
                 logger.info(f"R2 bucket contents after upload: {list_response.get('Contents', [])}")
             except Exception as e:
                 logger.warning(f"Failed to list R2 bucket contents for verification: {e}")
@@ -160,8 +166,9 @@ class StorageService:
     @classmethod
     async def generate_signed_url(cls, r2_key: str, expires_in_minutes: int = 15) -> str:
         s3 = get_s3_client()
-        from app.config import settings
-        url = s3.generate_presigned_url('get_object', Params={'Bucket': settings.R2_BUCKET_NAME, 'Key': r2_key}, ExpiresIn=expires_in_minutes * 60)
+        from app.services.config_service import get_config
+        r2_bucket_name = await get_config("r2_bucket_name", "visuluxe-images")
+        url = s3.generate_presigned_url('get_object', Params={'Bucket': r2_bucket_name, 'Key': r2_key}, ExpiresIn=expires_in_minutes * 60)
         return url
     
     @classmethod
@@ -171,8 +178,9 @@ class StorageService:
     @classmethod
     async def delete_image(cls, r2_key: str):
         s3 = get_s3_client()
-        from app.config import settings
-        s3.delete_object(Bucket=settings.R2_BUCKET_NAME, Key=r2_key)
+        from app.services.config_service import get_config
+        r2_bucket_name = await get_config("r2_bucket_name", "visuluxe-images")
+        s3.delete_object(Bucket=r2_bucket_name, Key=r2_key)
         logger.info(f"Deleted image from R2: {r2_key}")
     
     @classmethod

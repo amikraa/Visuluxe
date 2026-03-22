@@ -14,6 +14,7 @@ class QueueService:
     queue_name: str = "visuluxe-jobs"
     account_id: str = ""
     api_token: str = ""
+    _queue_paused: bool = False
     
     @classmethod
     def initialize(cls):
@@ -106,3 +107,52 @@ class QueueService:
     async def _get_next_job_fallback(cls) -> Optional[dict]:
         from app.services.database import DatabaseService
         return await DatabaseService.get_next_pending_job()
+    
+    @classmethod
+    async def pause_queue(cls):
+        """Pause job processing"""
+        cls._queue_paused = True
+        logger.info("Queue processing paused")
+    
+    @classmethod
+    async def resume_queue(cls):
+        """Resume job processing"""
+        cls._queue_paused = False
+        logger.info("Queue processing resumed")
+    
+    @classmethod
+    def is_queue_paused(cls) -> bool:
+        """Check if queue is paused"""
+        return cls._queue_paused
+    
+    @classmethod
+    async def get_queue_status(cls) -> Dict[str, Any]:
+        """Get current queue status and configuration"""
+        from app.services.config_service import get_config
+        
+        try:
+            max_concurrent_jobs = await get_config("max_concurrent_jobs", 10)
+            queue_paused = cls._queue_paused
+            
+            # Get pending job count from database
+            from app.services.database import DatabaseService
+            sb = DatabaseService.get_client()
+            pending_response = sb.table("generation_jobs").select("id").eq("status", "pending").execute()
+            pending_count = len(pending_response.data or [])
+            
+            return {
+                "queue_paused": queue_paused,
+                "max_concurrent_jobs": max_concurrent_jobs,
+                "pending_jobs": pending_count,
+                "queue_name": cls.queue_name,
+                "fallback_mode": not cls.account_id
+            }
+        except Exception as e:
+            logger.error(f"Failed to get queue status: {e}")
+            return {
+                "queue_paused": cls._queue_paused,
+                "max_concurrent_jobs": 10,
+                "pending_jobs": 0,
+                "queue_name": cls.queue_name,
+                "fallback_mode": True
+            }

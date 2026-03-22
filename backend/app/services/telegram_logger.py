@@ -13,10 +13,22 @@ logger = logging.getLogger(__name__)
 
 class TelegramLogger:
     def __init__(self):
-        from app.config import settings
-        self.bot_token = settings.telegram_bot_token
-        self.admin_chat_id = settings.telegram_admin_chat_id
+        self.bot_token = ""
+        self.admin_chat_id = ""
+        self.enabled = False
+        # Initialize async attributes
+        self._initialized = False
+    
+    async def initialize(self):
+        """Initialize the Telegram logger with runtime configuration"""
+        if self._initialized:
+            return
+            
+        from app.services.config_service import get_config
+        self.bot_token = await get_config("telegram_bot_token", "")
+        self.admin_chat_id = await get_config("telegram_admin_chat_id", "")
         self.enabled = bool(self.bot_token and self.admin_chat_id)
+        self._initialized = True
         
         if not self.enabled:
             logger.warning("Telegram logging is disabled - missing bot token or chat ID")
@@ -235,24 +247,29 @@ async def initialize_telegram_logger():
 # Convenience functions for easy use throughout the application
 async def log_image_generation_event(**kwargs):
     """Convenience function to log image generation events"""
+    await telegram_logger.initialize()
     return await telegram_logger.log_image_generation(**kwargs)
 
 
 async def log_security_event(event_type: str, details: Dict[str, Any]):
     """Convenience function to log security events"""
+    await telegram_logger.initialize()
     return await telegram_logger.log_security_event(event_type, details)
 
 
 async def log_provider_health_event(provider_name: str, status: str, details: Dict[str, Any]):
     """Convenience function to log provider health events"""
+    await telegram_logger.initialize()
     return await telegram_logger.log_provider_health(provider_name, status, details)
 
 
 async def log_system_alert(alert_type: str, message: str, details: Optional[Dict[str, Any]] = None):
     """Convenience function to log system alerts"""
+    await telegram_logger.initialize()
     return await telegram_logger.log_system_alert(alert_type, message, details)
 
 
 async def send_image_to_user_telegram(user_chat_id: str, image_url: str, caption: str):
     """Convenience function to send image to user's Telegram"""
+    await telegram_logger.initialize()
     return await telegram_logger.send_image_to_user(user_chat_id, image_url, caption)

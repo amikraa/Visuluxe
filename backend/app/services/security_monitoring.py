@@ -20,17 +20,36 @@ class SecurityMonitor:
         self.suspicious_ips: Set[str] = set()
         self.blocked_ips: Set[str] = set()
         
-        # Monitoring configuration
-        self.rpm_threshold = 100  # Requests per minute
-        self.rpd_threshold = 1000  # Requests per day
-        self.failed_auth_threshold = 10  # Failed auth attempts
-        self.failed_auth_window = 300  # 5 minutes
-        self.mass_generation_threshold = 50  # Images per minute
-        self.mass_generation_window = 60  # 1 minute
+        # Monitoring configuration - will be loaded from config service
+        self.rpm_threshold = 100  # Requests per minute (default)
+        self.rpd_threshold = 1000  # Requests per day (default)
+        self.failed_auth_threshold = 10  # Failed auth attempts (default)
+        self.failed_auth_window = 300  # 5 minutes (default)
+        self.mass_generation_threshold = 50  # Images per minute (default)
+        self.mass_generation_window = 60  # 1 minute (default)
         
         # Cleanup intervals
         self.cleanup_interval = 3600  # 1 hour
         self.running = False
+        self._initialized = False
+    
+    async def initialize(self):
+        """Initialize the security monitor with runtime configuration"""
+        if self._initialized:
+            return
+            
+        from app.services.config_service import get_config
+        
+        # Load configuration from config service
+        self.rpm_threshold = await get_config("rate_limit_rpm", 100)
+        self.rpd_threshold = await get_config("rate_limit_rpd", 1000)
+        self.failed_auth_threshold = await get_config("failed_auth_threshold", 10)
+        self.failed_auth_window = await get_config("failed_auth_window", 300)
+        self.mass_generation_threshold = await get_config("mass_generation_threshold", 50)
+        self.mass_generation_window = await get_config("mass_generation_window", 60)
+        
+        self._initialized = True
+        logger.info(f"Security monitor initialized with RPM: {self.rpm_threshold}, RPD: {self.rpd_threshold}")
     
     async def start_monitoring(self):
         """Start the security monitoring service"""
@@ -458,24 +477,29 @@ async def initialize_security_monitoring():
 # Convenience functions for easy use throughout the application
 async def check_api_key_access(api_key_id: str, ip_address: str) -> bool:
     """Check if an API key can be accessed from the given IP address"""
+    await security_monitor.initialize()
     return await security_monitor.check_api_key_access(api_key_id, ip_address)
 
 
 async def update_api_key_allowed_ips(api_key_id: str, allowed_ips: List[str]) -> bool:
     """Update allowed IPs for an API key"""
+    await security_monitor.initialize()
     return await security_monitor.update_api_key_allowed_ips(api_key_id, allowed_ips)
 
 
 async def check_rate_limit(user_id: str, ip_address: str) -> Dict[str, Any]:
     """Check if user/IP is within rate limits"""
+    await security_monitor.initialize()
     return await security_monitor.check_rate_limit(user_id, ip_address)
 
 
 async def get_security_status() -> Dict[str, Any]:
     """Get current security status"""
+    await security_monitor.initialize()
     return await security_monitor.get_security_status()
 
 
 async def unblock_ip(ip_address: str, unblocked_by: str = "admin") -> bool:
     """Unblock an IP address"""
+    await security_monitor.initialize()
     return await security_monitor.unblock_ip(ip_address, unblocked_by)
