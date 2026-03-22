@@ -8,15 +8,13 @@ import aiohttp
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 
+from app.services.config_service import get_config
+
 logger = logging.getLogger(__name__)
 
 
 class ProviderHealthMonitor:
     def __init__(self):
-        from app.config import settings
-        self.check_interval = 300  # Default 5 minutes
-        self.failure_threshold = 3
-        self.auto_disable_enabled = True
         self.health_check_tasks = {}
         self.running = False
         
@@ -45,6 +43,11 @@ class ProviderHealthMonitor:
             from app.services.database import DatabaseService
             sb = DatabaseService.get_client()
             
+            # Get runtime configuration
+            default_check_interval = await get_config("health_check_interval", 300)
+            default_failure_threshold = await get_config("failure_threshold", 3)
+            default_auto_disable = await get_config("auto_disable_on_failure", True)
+            
             # Get provider configurations
             response = sb.table("provider_configurations").select("*").execute()
             providers = response.data or []
@@ -53,9 +56,9 @@ class ProviderHealthMonitor:
                 provider_id = provider["provider_id"]
                 self.health_check_tasks[provider_id] = {
                     "enabled": True,
-                    "interval": provider.get("health_check_interval", self.check_interval),
-                    "failure_threshold": provider.get("failure_threshold", self.failure_threshold),
-                    "auto_disable": provider.get("auto_disable_on_failure", self.auto_disable_enabled),
+                    "interval": provider.get("health_check_interval", default_check_interval),
+                    "failure_threshold": provider.get("failure_threshold", default_failure_threshold),
+                    "auto_disable": provider.get("auto_disable_on_failure", default_auto_disable),
                     "last_check": None,
                     "consecutive_failures": 0,
                     "status": "unknown"

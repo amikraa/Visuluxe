@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 import logging
 
 from app.config import settings
-from app.routers import images, models, admin, auth, chat_completions, completions, embeddings, public_models, admin_models
+from app.routers import images, models, admin, auth, chat_completions, completions, embeddings, public_models, admin_models, admin_settings
 from app.errors import (
     openai_http_exception_handler,
     openai_validation_exception_handler,
@@ -126,6 +126,7 @@ app.include_router(images.router, prefix="/v1/images", tags=["Images"])
 # Internal / Visuluxe-specific endpoints
 app.include_router(auth.router, prefix="/v1/auth", tags=["Authentication"])
 app.include_router(admin.router, prefix="/v1/admin", tags=["Admin"])
+app.include_router(admin_settings.router, prefix="/v1/admin", tags=["Admin Settings"])
 
 
 # ---- Health & root endpoints ----

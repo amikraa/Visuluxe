@@ -10,6 +10,7 @@ from datetime import datetime
 
 from app.services.storage import StorageService
 from app.services.database import DatabaseService
+from app.services.config_service import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,10 @@ class ImageProcessor:
         job_data = job["data"]
         
         try:
+            # Get runtime configuration
+            job_timeout_minutes = await get_config("job_timeout_minutes", 30)
+            max_retry_attempts = await get_config("max_retry_attempts", 3)
+            
             # Update job status to processing
             await DatabaseService.update_job_status(job_id, "processing")
             
