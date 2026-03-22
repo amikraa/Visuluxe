@@ -99,6 +99,7 @@ END;
 $$;
 
 -- Function: Get model summary stats
+-- DEPRECATED: replaced by models table
 CREATE OR REPLACE FUNCTION public.get_model_summary_stats(
   p_start_date TIMESTAMPTZ,
   p_end_date TIMESTAMPTZ

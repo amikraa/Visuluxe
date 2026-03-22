@@ -201,12 +201,12 @@ Visuluxe is an AI image generation web platform with:
 Main entities (from migrations):
 - Identity/access: `profiles`, `user_roles`, `admin_invites`
 - Credits/billing: `user_credits`, `credits_transactions`, `invoices`
-- Generation domain: `providers`, `ai_models`, `images`, `request_logs`, `api_keys`
+- Generation domain: `providers`, `models`, `images`, `request_logs`, `api_keys`
 - Security/ops: `security_events`, `ip_blocklist`, `admin_audit_logs`, `system_settings`, `analytics_cache`, `notifications`
 
 Notable constraints/relationships:
 - `user_id` appears as cross-table identity key.
-- `ai_models.provider_id` references `providers.id`.
+- `models.provider_id` references `providers.id`.
 - `images` references model/provider/api_key dimensions for traceability.
 
 ---

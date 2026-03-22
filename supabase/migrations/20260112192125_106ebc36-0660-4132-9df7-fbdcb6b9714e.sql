@@ -418,6 +418,7 @@ CREATE TRIGGER audit_user_roles
 AFTER INSERT OR UPDATE OR DELETE ON public.user_roles
 FOR EACH ROW EXECUTE FUNCTION public.audit_user_roles_changes();
 
+-- DEPRECATED: replaced by models table
 -- Trigger function for ai_models changes
 CREATE OR REPLACE FUNCTION public.audit_ai_models_changes()
 RETURNS trigger

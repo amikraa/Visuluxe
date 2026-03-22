@@ -203,6 +203,27 @@ class ConfigService:
     async def reload(self, key: Optional[str] = None):
         """Reload configuration cache (alias for refresh)."""
         await self.refresh(key)
+
+    async def invalidate_cache(self, key: Optional[str] = None, reload: bool = False):
+        """
+        Immediately invalidate cache entries.
+
+        Args:
+            key: Optional specific key to invalidate. If omitted, invalidates entire cache.
+            reload: If True, reload from backing store immediately after invalidation.
+        """
+        if key:
+            self._cache.pop(key, None)
+            self._cache_ttl.pop(key, None)
+            logger.info(f"Configuration cache invalidated for key: {key}")
+            if reload:
+                await self.refresh(key)
+        else:
+            self._cache.clear()
+            self._cache_ttl.clear()
+            logger.info("Configuration cache invalidated for all keys")
+            if reload:
+                await self.refresh()
     
     def clear_cache(self):
         """Clear all cached configuration"""
@@ -349,6 +370,11 @@ async def refresh_config(key: Optional[str] = None):
 async def reload_config(key: Optional[str] = None):
     """Reload configuration cache"""
     await config_service.reload(key)
+
+
+async def invalidate_config_cache(key: Optional[str] = None, reload: bool = False):
+    """Immediately invalidate configuration cache, optionally reloading from backing store."""
+    await config_service.invalidate_cache(key=key, reload=reload)
 
 
 def clear_config_cache():

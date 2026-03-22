@@ -3,6 +3,7 @@ INSERT INTO public.providers (id, name, display_name, base_url, status, cost_per
 SELECT 'a0000000-0000-0000-0000-000000000001'::uuid, 'apirouter', 'Apirouter', 'https://api.apirouter.ai', 'active'::provider_status, 0.005, false, 1, NOW(), NOW()
 WHERE NOT EXISTS (SELECT 1 FROM public.providers WHERE name = 'apirouter');
 
+-- DEPRECATED: replaced by models table
 -- Temporarily disable trigger on ai_models to bypass audit
 DROP TRIGGER IF EXISTS audit_ai_models ON public.ai_models;
 

@@ -174,7 +174,7 @@ GENERATION
 
 ADMIN
  ├─ providers
- ├─ ai_models
+ ├─ models
  ├─ system_settings
  ├─ security_events
  └─ admin_audit_logs

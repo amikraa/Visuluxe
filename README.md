@@ -57,7 +57,7 @@ Primary runtime flow is implemented across:
 ### ai_models status
 - **Active backend/python runtime:** no `ai_models` references remain.
 - **Frontend runtime files updated:** moved to `models` in key admin/hooks files.
-- **Legacy historical SQL/docs artifacts:** still contain `ai_models` references (documented in Known Issues).
+- **Legacy historical SQL artifacts:** `ai_models` remains only in historical migration chains/snapshots.
 
 ---
 
@@ -67,7 +67,9 @@ Primary runtime flow is implemented across:
 - Service class: [`backend/app/services/config_service.py`](backend/app/services/config_service.py:23)
 - `get()`: [`backend/app/services/config_service.py`](backend/app/services/config_service.py:87)
 - `set()`: [`backend/app/services/config_service.py`](backend/app/services/config_service.py:127)
-- `reload()` (added): [`backend/app/services/config_service.py`](backend/app/services/config_service.py:203)
+- `reload()` alias: [`backend/app/services/config_service.py`](backend/app/services/config_service.py:203)
+- `invalidate_cache()` immediate invalidation API: [`backend/app/services/config_service.py`](backend/app/services/config_service.py:207)
+- `invalidate_config_cache()` helper: [`backend/app/services/config_service.py`](backend/app/services/config_service.py:375)
 
 ### Backing store
 - `system_settings` upsert/read path: [`backend/app/services/config_service.py`](backend/app/services/config_service.py:150), [`backend/app/services/config_service.py`](backend/app/services/config_service.py:234)
@@ -76,6 +78,11 @@ Primary runtime flow is implemented across:
 - timeout = 300s: [`backend/app/services/config_service.py`](backend/app/services/config_service.py:29)
 - expiry write: [`backend/app/services/config_service.py`](backend/app/services/config_service.py:229)
 - expiry check: [`backend/app/services/config_service.py`](backend/app/services/config_service.py:220)
+
+### Immediate apply wiring (no TTL wait)
+- Single setting update invalidates+reloads key: [`backend/app/routers/admin_settings.py`](backend/app/routers/admin_settings.py:128)
+- Bulk update invalidates+reloads all: [`backend/app/routers/admin_settings.py`](backend/app/routers/admin_settings.py:155)
+- Defaults reset invalidates+reloads all: [`backend/app/routers/admin_settings.py`](backend/app/routers/admin_settings.py:242)
 
 ### Fallback env logic
 - env fallback only in config service: [`backend/app/services/config_service.py`](backend/app/services/config_service.py:237)
@@ -148,7 +155,7 @@ Implemented in processor:
 ## 9) Known Issues (Critical)
 
 1. Legacy SQL migration history still includes `ai_models` DDL/DML text (historical migration chain), e.g. [`supabase/migrations/20260112152647_f50abda4-b40a-467c-bbdd-f2e32f08d270.sql`](supabase/migrations/20260112152647_f50abda4-b40a-467c-bbdd-f2e32f08d270.sql:30).
-2. Historical docs still mention `ai_models`, e.g. [`docs/architecture.md`](docs/architecture.md:32).
+2. Historical SQL snapshots under docs still include `ai_models`, e.g. [`docs/migrations/000000_baseline.sql`](docs/migrations/000000_baseline.sql:355).
 3. `@supabase/realtime-js` appears in lockfile as transitive package metadata only: [`package-lock.json`](package-lock.json:2600).
 
 These do **not** represent active backend Python runtime usage but are documented for full transparency.
@@ -195,9 +202,9 @@ Proof: [`backend/app/services/queue.py`](backend/app/services/queue.py:117), [`b
 - Before: `os.getenv(...)` for Supabase in [`backend/app/security.py`](backend/app/security.py:34)
 - After: settings-only initialization in [`backend/app/security.py`](backend/app/security.py:30)
 
-2. Missing reload API in config service
-- Before: `refresh()` only
-- After: `reload()` added in [`backend/app/services/config_service.py`](backend/app/services/config_service.py:203)
+2. Config cache latency after admin writes
+- Before: updates could rely on TTL expiry for practical effect.
+- After: immediate invalidation + optional reload via [`backend/app/services/config_service.py`](backend/app/services/config_service.py:207), wired into admin update paths [`backend/app/routers/admin_settings.py`](backend/app/routers/admin_settings.py:128), [`backend/app/routers/admin_settings.py`](backend/app/routers/admin_settings.py:155), [`backend/app/routers/admin_settings.py`](backend/app/routers/admin_settings.py:242)
 
 3. Queue pause not persisted; concurrency partially static
 - Before: in-memory pause only
@@ -221,11 +228,11 @@ Proof: [`backend/app/services/queue.py`](backend/app/services/queue.py:117), [`b
 
 - `ai_models` removed from active backend Python runtime: **YES**
 - SQLAlchemy removed: **YES**
-- Central config service present with `get/set/reload`: **YES**
+- Central config service present with `get/set/reload/invalidate_cache`: **YES**
 - Direct env misuse in backend Python runtime: **NO** (only fallback in config service)
 - Redis/realtime/pubsub in backend Python runtime: **NO**
 - Job system dynamic controls (`max_concurrent_jobs`, `queue_paused`): **YES**
 - Storage lifecycle runtime-configurable (`r2_bucket_lifetime_days`): **YES**
 - Runtime behavior wiring (simulated by code path verification): **YES**
 
-Note: historical docs/migrations still contain legacy `ai_models` text and are listed in Known Issues for explicit follow-up cleanup strategy.
+Note: legacy `ai_models` text is confined to historical SQL migration/snapshot artifacts and is listed in Known Issues for explicit provenance tracking.

@@ -254,7 +254,7 @@ Core tables:
 * ip_blocklist
 * security_events
 * providers
-* ai_models
+* models
 * api_keys
 * images
 * request_logs

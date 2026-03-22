@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from app.routers.auth import verify_admin
 from app.services.config_service import (
     get_config, set_config, get_all_config, get_config_by_category, 
-    refresh_config, clear_config_cache
+    refresh_config, clear_config_cache, invalidate_config_cache
 )
 
 router = APIRouter(
@@ -125,6 +125,7 @@ async def update_system_setting(key: str, setting: SettingUpdate):
             description=setting.description or f"Updated via admin API",
             updated_by=setting.updated_by or "admin"
         )
+        await invalidate_config_cache(key=key, reload=True)
         
         return {"message": f"Setting {key} updated successfully", "key": key, "value": setting.value}
     except HTTPException:
@@ -150,6 +151,8 @@ async def update_bulk_settings(settings: Dict[str, Any]):
         for key, value in settings.items():
             await set_config(key, value, f"Bulk update via admin API")
             updated_settings[key] = value
+
+        await invalidate_config_cache(reload=True)
         
         return {
             "message": f"Updated {len(updated_settings)} settings successfully",
@@ -235,6 +238,8 @@ async def reset_to_defaults():
         # Update all settings to defaults
         for key, value in defaults.items():
             await set_config(key, value, "Reset to default values via admin API")
+
+        await invalidate_config_cache(reload=True)
         
         return {
             "message": f"Reset {len(defaults)} settings to default values",

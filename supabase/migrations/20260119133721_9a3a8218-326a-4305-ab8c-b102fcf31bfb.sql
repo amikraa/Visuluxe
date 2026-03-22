@@ -206,6 +206,7 @@ ADD COLUMN IF NOT EXISTS max_images_per_day integer DEFAULT 100,
 ADD COLUMN IF NOT EXISTS last_login_at timestamp with time zone,
 ADD COLUMN IF NOT EXISTS last_login_ip text;
 
+-- DEPRECATED: replaced by models table
 -- 15. Add provider_id to ai_models for linking
 ALTER TABLE public.ai_models
 ADD COLUMN IF NOT EXISTS provider_id uuid REFERENCES public.providers(id),

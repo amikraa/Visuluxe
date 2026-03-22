@@ -26,6 +26,7 @@ CREATE TABLE public.user_roles (
 ALTER TABLE public.profiles 
 ADD COLUMN IF NOT EXISTS account_type account_type NOT NULL DEFAULT 'normal';
 
+-- DEPRECATED: replaced by models table
 -- Create ai_models table
 CREATE TABLE public.ai_models (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

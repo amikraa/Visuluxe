@@ -29,7 +29,7 @@ Visuluxe is a React + Vite single-page application backed by Supabase. It offers
 Key tables include:
 - **User/roles**: `profiles`, `user_roles`.
 - **Credits/billing**: `user_credits`, `credits_transactions`, `invoices`.
-- **AI models/providers**: `ai_models`, `providers`.
+- **AI models/providers**: `models`, `providers`.
 - **Images/usage**: `images`, `request_logs`.
 - **Security/audit**: `security_events`, `ip_blocklist`, `admin_audit_logs`.
 - **Notifications/settings**: `notifications`, `system_settings`, `admin_invites`.

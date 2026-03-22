@@ -242,7 +242,7 @@ describe("CODEBASE_DEEP_DIVE.md", () => {
         "profiles",
         "user_credits",
         "providers",
-        "ai_models",
+        "models",
         "images",
         "api_keys",
       ];

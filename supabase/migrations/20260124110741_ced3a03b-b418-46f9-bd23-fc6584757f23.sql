@@ -96,6 +96,7 @@ END;
 $function$;
 
 -- Fix get_model_summary_stats - Add admin check
+-- DEPRECATED: replaced by models table
 CREATE OR REPLACE FUNCTION public.get_model_summary_stats(p_start_date timestamp with time zone, p_end_date timestamp with time zone)
  RETURNS TABLE(model_id uuid, model_name text, total_requests bigint, successful_requests bigint, failed_requests bigint, success_rate numeric, total_credits numeric, avg_credits_per_gen numeric, avg_response_time numeric, last_used timestamp with time zone)
  LANGUAGE plpgsql
