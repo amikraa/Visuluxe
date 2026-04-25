@@ -59,9 +59,9 @@ class QueueService:
         await DatabaseService.store_pending_job(job)
     
     @classmethod
-    async def get_job_status(cls, job_id: str) -> Dict[str, Any]:
+    async def get_job_status(cls, job_id: str, user_id: str = None) -> Dict[str, Any]:
         from app.services.database import DatabaseService
-        return await DatabaseService.get_job_status(job_id)
+        return await DatabaseService.get_job_status(job_id, user_id)
     
     @classmethod
     async def update_job_status(cls, job_id: str, status: str, result: Optional[dict] = None, error: Optional[str] = None):
@@ -144,8 +144,11 @@ class QueueService:
             # Get pending job count from database
             from app.services.database import DatabaseService
             sb = DatabaseService.get_client()
-            pending_response = sb.table("generation_jobs").select("id").eq("status", "pending").execute()
-            pending_count = len(pending_response.data or [])
+            if sb is None:
+                pending_count = 0
+            else:
+                pending_response = sb.table("generation_jobs").select("id").eq("status", "pending").execute()
+                pending_count = len(pending_response.data or [])
             
             return {
                 "queue_paused": queue_paused,

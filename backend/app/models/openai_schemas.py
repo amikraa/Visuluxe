@@ -15,6 +15,7 @@ import uuid
 # ---------------------------------------------------------------------------
 
 class OpenAIErrorDetail(BaseModel):
+    model_config = {"protected_namespaces": ()}
     """Standard OpenAI error envelope."""
     message: str
     type: str = "invalid_request_error"
@@ -23,11 +24,13 @@ class OpenAIErrorDetail(BaseModel):
 
 
 class OpenAIErrorResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     """Top-level error response matching OpenAI format."""
     error: OpenAIErrorDetail
 
 
 class UsageInfo(BaseModel):
+    model_config = {"protected_namespaces": ()}
     """Token usage information returned by completions endpoints."""
     prompt_tokens: int = 0
     completion_tokens: int = 0
@@ -39,6 +42,7 @@ class UsageInfo(BaseModel):
 # ---------------------------------------------------------------------------
 
 class ModelPermission(BaseModel):
+    model_config = {"protected_namespaces": ()}
     id: str = ""
     object: str = "model_permission"
     created: int = 0
@@ -54,6 +58,7 @@ class ModelPermission(BaseModel):
 
 
 class ModelObject(BaseModel):
+    model_config = {"protected_namespaces": ()}
     """Single model entry in the OpenAI /v1/models response."""
     id: str
     object: str = "model"
@@ -65,6 +70,7 @@ class ModelObject(BaseModel):
 
 
 class ModelListResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     """GET /v1/models response."""
     object: str = "list"
     data: List[ModelObject]
@@ -75,17 +81,20 @@ class ModelListResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 class FunctionCall(BaseModel):
+    model_config = {"protected_namespaces": ()}
     name: str
     arguments: str
 
 
 class ToolCall(BaseModel):
+    model_config = {"protected_namespaces": ()}
     id: str = Field(default_factory=lambda: f"call_{uuid.uuid4().hex[:24]}")
     type: str = "function"
     function: FunctionCall
 
 
 class ChatMessage(BaseModel):
+    model_config = {"protected_namespaces": ()}
     role: Literal["system", "user", "assistant", "tool", "function"]
     content: Optional[Union[str, List[Any]]] = None
     name: Optional[str] = None
@@ -95,21 +104,25 @@ class ChatMessage(BaseModel):
 
 
 class FunctionDefinition(BaseModel):
+    model_config = {"protected_namespaces": ()}
     name: str
     description: Optional[str] = None
     parameters: Optional[Dict[str, Any]] = None
 
 
 class ToolDefinition(BaseModel):
+    model_config = {"protected_namespaces": ()}
     type: str = "function"
     function: FunctionDefinition
 
 
 class ResponseFormat(BaseModel):
+    model_config = {"protected_namespaces": ()}
     type: str = "text"
 
 
 class ChatCompletionRequest(BaseModel):
+    model_config = {"protected_namespaces": ()}
     """POST /v1/chat/completions request body."""
     model: str
     messages: List[ChatMessage]
@@ -133,6 +146,7 @@ class ChatCompletionRequest(BaseModel):
 
 
 class ChatCompletionChoice(BaseModel):
+    model_config = {"protected_namespaces": ()}
     index: int = 0
     message: ChatMessage
     finish_reason: Optional[str] = "stop"
@@ -140,6 +154,7 @@ class ChatCompletionChoice(BaseModel):
 
 
 class ChatCompletionResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     """Non-streaming chat completion response."""
     id: str = Field(default_factory=lambda: f"chatcmpl-{uuid.uuid4().hex[:24]}")
     object: str = "chat.completion"
@@ -151,6 +166,7 @@ class ChatCompletionResponse(BaseModel):
 
 
 class ChatCompletionStreamDelta(BaseModel):
+    model_config = {"protected_namespaces": ()}
     role: Optional[str] = None
     content: Optional[str] = None
     tool_calls: Optional[List[ToolCall]] = None
@@ -158,6 +174,7 @@ class ChatCompletionStreamDelta(BaseModel):
 
 
 class ChatCompletionStreamChoice(BaseModel):
+    model_config = {"protected_namespaces": ()}
     index: int = 0
     delta: ChatCompletionStreamDelta
     finish_reason: Optional[str] = None
@@ -165,6 +182,7 @@ class ChatCompletionStreamChoice(BaseModel):
 
 
 class ChatCompletionStreamResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     """Single SSE chunk for streaming chat completions."""
     id: str = Field(default_factory=lambda: f"chatcmpl-{uuid.uuid4().hex[:24]}")
     object: str = "chat.completion.chunk"
@@ -179,6 +197,7 @@ class ChatCompletionStreamResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 class CompletionRequest(BaseModel):
+    model_config = {"protected_namespaces": ()}
     """POST /v1/completions request body."""
     model: str
     prompt: Union[str, List[str]]
@@ -200,6 +219,7 @@ class CompletionRequest(BaseModel):
 
 
 class CompletionChoice(BaseModel):
+    model_config = {"protected_namespaces": ()}
     text: str
     index: int = 0
     logprobs: Optional[Any] = None
@@ -207,6 +227,7 @@ class CompletionChoice(BaseModel):
 
 
 class CompletionResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     id: str = Field(default_factory=lambda: f"cmpl-{uuid.uuid4().hex[:24]}")
     object: str = "text_completion"
     created: int = Field(default_factory=lambda: int(time.time()))
@@ -221,6 +242,7 @@ class CompletionResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 class EmbeddingRequest(BaseModel):
+    model_config = {"protected_namespaces": ()}
     """POST /v1/embeddings request body."""
     input: Union[str, List[str]]
     model: str
@@ -229,12 +251,14 @@ class EmbeddingRequest(BaseModel):
 
 
 class EmbeddingData(BaseModel):
+    model_config = {"protected_namespaces": ()}
     object: str = "embedding"
     embedding: List[float]
     index: int = 0
 
 
 class EmbeddingResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     object: str = "list"
     data: List[EmbeddingData]
     model: str
@@ -246,6 +270,7 @@ class EmbeddingResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 class ImageGenerationRequest(BaseModel):
+    model_config = {"protected_namespaces": ()}
     """POST /v1/images/generations -- OpenAI-compatible request."""
     prompt: str = Field(..., min_length=1, max_length=4000)
     model: Optional[str] = Field(default="flux-dev")
@@ -261,18 +286,21 @@ class ImageGenerationRequest(BaseModel):
 
 
 class ImageObject(BaseModel):
+    model_config = {"protected_namespaces": ()}
     url: Optional[str] = None
     b64_json: Optional[str] = None
     revised_prompt: Optional[str] = None
 
 
 class ImageGenerationResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     """OpenAI-compatible image generation response."""
     created: int = Field(default_factory=lambda: int(time.time()))
     data: List[ImageObject]
 
 
 class ImageJobStatusResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     """Extended response for async job polling (Visuluxe extension)."""
     job_id: str
     status: str

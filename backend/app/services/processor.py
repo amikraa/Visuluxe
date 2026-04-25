@@ -14,6 +14,48 @@ from app.services.config_service import get_config
 
 logger = logging.getLogger(__name__)
 
+# ---- Sensitive Data Redaction Helper ----
+SENSITIVE_FIELDS = {"prompt", "negative_prompt", "user_id", "authorization", "x-api-key", "api_key", "password", "token", "secret"}
+
+
+def _redact_sensitive(data: dict, fields_to_redact: set = None) -> dict:
+    """
+    Recursively redact sensitive fields from a dictionary for safe logging.
+    
+    SECURITY: Prevents sensitive data (prompts, API keys, tokens) from appearing
+    in production logs which could be accessed by unauthorized personnel.
+    """
+    if fields_to_redact is None:
+        fields_to_redact = SENSITIVE_FIELDS
+    
+    if not isinstance(data, dict):
+        return data
+    
+    redacted = {}
+    for key, value in data.items():
+        key_lower = key.lower()
+        if key_lower in fields_to_redact:
+            if isinstance(value, str) and len(value) > 8:
+                redacted[key] = f"{value[:4]}...{value[-4:]}"
+            else:
+                redacted[key] = "[REDACTED]"
+        elif isinstance(value, dict):
+            redacted[key] = _redact_sensitive(value, fields_to_redact)
+        elif isinstance(value, list):
+            redacted[key] = [
+                _redact_sensitive(v, fields_to_redact) if isinstance(v, dict) else v
+                for v in value
+            ]
+        else:
+            redacted[key] = value
+    return redacted
+
+
+def _safe_log_payload(payload: dict) -> str:
+    """Log payload with sensitive fields redacted."""
+    safe = _redact_sensitive(dict(payload))
+    return str(safe)
+
 
 class ImageProcessor:
     flux_api_url: str = ""
@@ -43,17 +85,42 @@ class ImageProcessor:
             await DatabaseService.update_job_status(job_id, "processing")
             
             # Get model information and call appropriate provider API
+            # SECURITY: Strict fail-closed model validation
+            # ONLY "active" models are processed. All other statuses rejected.
             model_id = job_data.get("model")
             if model_id:
                 model_info = await cls._get_model_info(model_id)
-                if model_info:
-                    result = await cls._call_provider_api(job_data, model_info)
-                else:
-                    # Fallback to Flux if model not found
-                    result = await cls._call_flux_provider(job_data)
+                if not model_info:
+                    # Model not found in registry - REJECT
+                    logger.error(f"Model '{model_id}' not found in model registry. Rejecting job.")
+                    await DatabaseService.update_job_status(
+                        job_id, 
+                        "failed", 
+                        error=f"Model '{model_id}' not found. Unknown models are rejected."
+                    )
+                    return False
+                
+                # Strict status check - only "active" allowed
+                model_status = model_info.get("status")
+                if model_status != "active":
+                    logger.error(f"Model '{model_id}' has status '{model_status or 'unknown'}'. Only active models are accepted. Rejecting job.")
+                    await DatabaseService.update_job_status(
+                        job_id, 
+                        "failed", 
+                        error=f"Model '{model_id}' is not available (status: {model_status or 'unknown'}). Only active models are processed."
+                    )
+                    return False
+                
+                result = await cls._call_provider_api(job_data, model_info)
             else:
-                # Fallback to Flux if no model specified
-                result = await cls._call_flux_provider(job_data)
+                # No model specified - REJECT
+                logger.error("No model specified in job. Rejecting job.")
+                await DatabaseService.update_job_status(
+                    job_id, 
+                    "failed", 
+                    error="No model specified. Please specify a valid model."
+                )
+                return False
             
             if result and result.get("success"):
                 # Process and store images
@@ -177,7 +244,7 @@ class ImageProcessor:
                     api_url = provider_config.get("api_url", cls.flux_api_url)
                     
                     logger.info(f"Calling {provider_id} API: {api_url}")
-                    logger.info(f"Payload: {payload}")
+                    logger.info(f"Payload: {_safe_log_payload(payload)}")
                     
                     async with aiohttp.ClientSession() as session:
                         async with session.post(
@@ -229,6 +296,9 @@ class ImageProcessor:
     async def _get_provider_config(cls, provider_id: str) -> Optional[Dict[str, Any]]:
         """Get provider configuration from database"""
         sb = DatabaseService.get_client()
+        if sb is None:
+            logger.warning(f"Supabase unavailable, cannot get provider config for '{provider_id}'")
+            return None
         response = sb.table("provider_configurations").select("*").eq("provider_id", provider_id).single().execute()
         return response.data if response.data else None
     
@@ -236,6 +306,9 @@ class ImageProcessor:
     async def _get_model_info(cls, model_id: str, refresh: bool = False) -> Optional[Dict[str, Any]]:
         """Get model information from database using new model registry"""
         sb = DatabaseService.get_client()
+        if sb is None:
+            logger.warning(f"Supabase unavailable, cannot get model info for '{model_id}'")
+            return None
         # First get the model from the models table
         model_response = sb.table("models").select("*").eq("model_id", model_id).single().execute()
         if not model_response.data:
@@ -302,7 +375,7 @@ class ImageProcessor:
             }
             
             logger.info(f"Calling Flux API: {cls.flux_api_url}")
-            logger.info(f"Payload: {payload}")
+            logger.info(f"Payload: {_safe_log_payload(payload)}")
             
             async with aiohttp.ClientSession() as session:
                 async with session.post(
@@ -470,8 +543,11 @@ class ImageProcessor:
 
                 max_concurrent_jobs = int(queue_status.get("max_concurrent_jobs", 10))
                 sb = DatabaseService.get_client()
-                processing_response = sb.table("generation_jobs").select("id").eq("status", "processing").execute()
-                processing_count = len(processing_response.data or [])
+                if sb is None:
+                    processing_count = 0
+                else:
+                    processing_response = sb.table("generation_jobs").select("id").eq("status", "processing").execute()
+                    processing_count = len(processing_response.data or [])
                 if processing_count >= max_concurrent_jobs:
                     await asyncio.sleep(2)
                     continue

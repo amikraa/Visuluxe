@@ -1,8 +1,61 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// =============================================================================
+// CORS CONFIGURATION - SECURITY FIX (MEDIUM-001)
+// =============================================================================
+// Strict CORS configuration to prevent cross-origin data exfiltration.
+// Only allows specific trusted origins. Never use wildcard with credentials.
+// =============================================================================
+
+const TRUSTED_ORIGINS = [
+  "https://amikra.zo.space",  // Zo Space frontend
+  "https://visuluxe.app",       // Production frontend
+  "http://localhost:3000",     // Local development
+  "http://localhost:5173",     // Vite dev server
+];
+
+/**
+ * Validate and get CORS headers for the request origin.
+ * SECURITY: Fails closed - returns 403 for untrusted origins.
+ */
+function getCorsHeaders(req: Request): { headers: Record<string, string>; allowed: boolean; status: number } {
+  const origin = req.headers.get("origin");
+  
+  // If no origin header, we cannot validate - fail closed
+  if (!origin) {
+    return {
+      headers: {},
+      allowed: false,
+      status: 403
+    };
+  }
+  
+  // Check if origin is in trusted list
+  if (TRUSTED_ORIGINS.includes(origin)) {
+    return {
+      headers: {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+        "Access-Control-Allow-Headers": "authorization, content-type, x-api-key, x-request-timestamp",
+        "Access-Control-Allow-Credentials": "true",
+      },
+      allowed: true,
+      status: 200
+    };
+  }
+  
+  // Origin not in trusted list - fail closed
+  return {
+    headers: {},
+    allowed: false,
+    status: 403
+  };
+}
+
+// Legacy export for backward compatibility (uses dynamic origin)
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://amikra.zo.space",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key",
 };
 
@@ -70,9 +123,23 @@ async function checkRateLimits(
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
+  // SECURITY: Validate CORS origin before processing ANY request
+  const cors = getCorsHeaders(req);
+  
+  // Handle CORS preflight (OPTIONS)
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    if (!cors.allowed) {
+      return new Response("Forbidden", { status: 403 });
+    }
+    return new Response(null, { headers: cors.headers });
+  }
+  
+  // Reject requests from untrusted origins
+  if (!cors.allowed) {
+    return new Response(
+      JSON.stringify({ error: "Access denied: origin not allowed", status: 403 }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
   }
 
   const startTime = Date.now();
@@ -90,7 +157,7 @@ serve(async (req) => {
     if (!prompt) {
       return new Response(
         JSON.stringify({ error: "Prompt is required", status: 400 }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
       );
     }
 
@@ -100,7 +167,7 @@ serve(async (req) => {
       const message = await getSystemSetting(supabase, "maintenance_message") || "System is under maintenance";
       return new Response(
         JSON.stringify({ error: message, status: 503 }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
       );
     }
 
@@ -115,6 +182,9 @@ serve(async (req) => {
 
     if (apiKeyHeader) {
       // Validate API key
+      // SECURITY NOTE: key_prefix is stored for efficient database indexing only.
+      // The actual security is provided by the SHA-256 hash comparison.
+      // The prefix alone provides no security value - it's just for index optimization.
       const keyPrefix = apiKeyHeader.substring(0, 8);
       const keyHash = await hashApiKey(apiKeyHeader);
 
@@ -137,14 +207,14 @@ serve(async (req) => {
         
           return new Response(
           JSON.stringify({ error: "Invalid API key", status: 401 }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
         );
       }
 
       if (apiKey.status !== "active") {
         return new Response(
           JSON.stringify({ error: `API key is ${apiKey.status}`, status: 403 }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
         );
       }
 
@@ -152,7 +222,7 @@ serve(async (req) => {
       if (apiKey.expires_at && new Date(apiKey.expires_at) < new Date()) {
         return new Response(
           JSON.stringify({ error: "API key has expired", status: 403 }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
         );
       }
 
@@ -168,7 +238,7 @@ serve(async (req) => {
       if (authError || !user) {
         return new Response(
           JSON.stringify({ error: "Invalid session", status: 401 }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
         );
       }
 
@@ -176,7 +246,7 @@ serve(async (req) => {
     } else {
       return new Response(
         JSON.stringify({ error: "Authentication required", status: 401 }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
       );
     }
 
@@ -196,7 +266,7 @@ serve(async (req) => {
     if (profile?.is_banned) {
       return new Response(
         JSON.stringify({ error: `Account banned: ${profile.ban_reason || "Contact support"}`, status: 403 }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
       );
     }
 
@@ -223,7 +293,7 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ error: "Access denied", status: 403 }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
       );
     }
 
@@ -241,7 +311,7 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ error: rateLimitCheck.error, status: 429 }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
       );
     }
 
@@ -259,7 +329,7 @@ serve(async (req) => {
       if ((todayCount || 0) >= profile.max_images_per_day) {
         return new Response(
           JSON.stringify({ error: "Daily image generation limit reached", status: 429 }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
         );
       }
     }
@@ -280,7 +350,7 @@ serve(async (req) => {
         if (model.status === "disabled" || model.status === "offline") {
           return new Response(
             JSON.stringify({ error: "Model is currently unavailable", status: 400 }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
           );
         }
 
@@ -288,7 +358,7 @@ serve(async (req) => {
         if (model.is_soft_disabled) {
           return new Response(
             JSON.stringify({ error: model.soft_disable_message || "Model temporarily unavailable", status: 400 }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
           );
         }
 
@@ -308,7 +378,7 @@ serve(async (req) => {
           } else {
             return new Response(
               JSON.stringify({ error: "Model is in cooldown, please try again later", status: 503 }),
-              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
             );
           }
         } else {
@@ -337,7 +407,7 @@ serve(async (req) => {
           available: totalAvailable,
           status: 402,
         }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
       );
     }
 
@@ -349,7 +419,7 @@ serve(async (req) => {
       console.error("PRIVATE_BACKEND_URL not configured");
       return new Response(
         JSON.stringify({ error: "Image generation service not configured", status: 500 }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
       );
     }
 
@@ -429,20 +499,20 @@ serve(async (req) => {
       if (backendResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded, please try again later", status: 429 }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
         );
       }
 
       if (backendResponse.status === 402) {
         return new Response(
           JSON.stringify({ error: "Service quota exceeded", status: 503 }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
         );
       }
 
       return new Response(
         JSON.stringify({ error: "Image generation failed", status: 500 }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
       );
     }
 
@@ -487,7 +557,7 @@ serve(async (req) => {
           const errorMessage = (edgeJob.error as string | null) || "Image generation failed";
           return new Response(
             JSON.stringify({ error: errorMessage, status: 500 }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } },
           );
         }
 
@@ -519,7 +589,7 @@ serve(async (req) => {
       console.error("No image in backend response:", aiData);
       return new Response(
         JSON.stringify({ error: "No image generated", status: 500 }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
       );
     }
 
@@ -668,7 +738,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify(responsePayload), {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...cors.headers, "Content-Type": "application/json" },
     });
 
   } catch (error) {
@@ -678,7 +748,7 @@ serve(async (req) => {
         error: error instanceof Error ? error.message : "Unknown error",
         status: 500,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...cors.headers, "Content-Type": "application/json" } }
     );
   }
 });

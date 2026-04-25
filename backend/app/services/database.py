@@ -10,13 +10,27 @@ logger = logging.getLogger(__name__)
 
 
 class DatabaseService:
+    """
+    Database service with graceful degradation when Supabase is unavailable.
+    """
+    
     @staticmethod
     def get_client():
         from app.security import get_supabase
         return get_supabase()
     
     @classmethod
+    def _check_client(cls) -> bool:
+        """Check if Supabase client is available."""
+        sb = cls.get_client()
+        return sb is not None
+    
+    @classmethod
     async def store_pending_job(cls, job: dict) -> str:
+        if not cls._check_client():
+            logger.warning("Supabase client is not available. Skipping job storage.")
+            return ""
+        
         sb = cls.get_client()
         job_id = job["id"]
         job_data = job["data"]
@@ -110,7 +124,7 @@ class DatabaseService:
         return job_id
     
     @classmethod
-    async def get_job_status(cls, job_id: str) -> Dict[str, Any]:
+    async def get_job_status(cls, job_id: str, user_id: str = None) -> Dict[str, Any]:
         sb = cls.get_client()
         response = sb.table("generation_jobs").select("*").eq("job_id", job_id).execute()
         
@@ -118,6 +132,10 @@ class DatabaseService:
             return {"status": "not_found"}
         
         job = response.data[0]
+        
+        # Check ownership if user_id is provided
+        if user_id is not None and job.get("user_id") != user_id:
+            return {"status": "forbidden"}
         
         return {
             "status": job["status"],

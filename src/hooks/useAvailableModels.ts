@@ -5,14 +5,15 @@ export interface AIModel {
   id: string;
   name: string;
   model_id: string;
-  engine_type: string;
-  category: string;
-  status: 'active' | 'beta' | 'disabled' | 'offline';
-  credits_cost: number;
-  access_level: 'public' | 'partner_only' | 'admin_only';
   description: string | null;
-  is_soft_disabled: boolean;
-  soft_disable_message: string | null;
+  tier: 'Free' | 'Pro' | 'Enterprise';
+  max_images: number;
+  supports_i2i: boolean;
+  processing_type: 'Async' | 'Sync';
+  max_wait_time: string;
+  capabilities: Record<string, any>;
+  supported_sizes: string[];
+  status: 'active' | 'maintenance' | 'disabled';
 }
 
 export function useAvailableModels() {
@@ -21,13 +22,19 @@ export function useAvailableModels() {
     queryFn: async (): Promise<AIModel[]> => {
       const { data, error } = await supabase
         .from('models')
-        .select('id, name, model_id, engine_type, category, status, credits_cost, access_level, description, is_soft_disabled, soft_disable_message')
-        .in('status', ['active', 'beta'])
-        .eq('is_soft_disabled', false)
+        .select('id, name, model_id, description, tier, max_images, supports_i2i, processing_type, max_wait_time, capabilities, supported_sizes, status')
+        .eq('status', 'active')
         .order('name');
 
       if (error) throw error;
-      return (data || []) as AIModel[];
+      
+      // Calculate credits_cost based on tier (Free=0, Pro=5, Enterprise=10 as placeholder)
+      // In production this should come from model_providers table or a pricing config
+      return (data || []).map(model => ({
+        ...model,
+        credits_cost: model.tier === 'Free' ? 0 : model.tier === 'Pro' ? 5 : 10, // Placeholder - wire up real pricing
+        access_level: 'public' as const,
+      })) as AIModel[];
     },
     staleTime: 60000, // 1 minute
   });

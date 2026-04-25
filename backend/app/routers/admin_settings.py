@@ -6,11 +6,24 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel
 
-from app.routers.auth import verify_admin
+from app.routers.auth import get_current_user  # Import for dependency injection
 from app.services.config_service import (
     get_config, set_config, get_all_config, get_config_by_category, 
     refresh_config, clear_config_cache, invalidate_config_cache
 )
+
+
+async def verify_admin(user: dict = Depends(get_current_user)):
+    """Admin verification dependency - checks if user has admin role."""
+    from app.security import get_supabase
+    sb = get_supabase()
+    if sb is None:
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
+    response = sb.table("user_roles").select("role").eq("user_id", user["user_id"]).in_("role", ["admin", "super_admin"]).execute()
+    if not response.data:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
 
 router = APIRouter(
     prefix="/admin/system-settings",

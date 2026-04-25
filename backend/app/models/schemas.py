@@ -9,6 +9,7 @@ from datetime import datetime
 
 # Image Generation Request (OpenAI-compatible)
 class ImageGenerationRequest(BaseModel):
+    model_config = {"protected_namespaces": ()}
     prompt: str = Field(..., min_length=1, max_length=4000, description="Text description of the desired image")
     model: Optional[str] = Field(default="flux-dev", description="Model to use for generation")
     n: int = Field(default=1, ge=1, le=4, description="Number of images to generate")
@@ -21,12 +22,14 @@ class ImageGenerationRequest(BaseModel):
 
 # Response models
 class ImageGenerationResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     created: bool
     job_id: str
     status: str
 
 
 class ImageJobStatusResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     job_id: str
     status: str
     result: Optional[dict] = None
@@ -34,6 +37,7 @@ class ImageJobStatusResponse(BaseModel):
 
 
 class GeneratedImage(BaseModel):
+    model_config = {"protected_namespaces": ()}
     url: str
     revised_prompt: Optional[str] = None
     r2_key: str
@@ -42,6 +46,7 @@ class GeneratedImage(BaseModel):
 
 # Model list response (OpenAI-compatible)
 class ModelObject(BaseModel):
+    model_config = {"protected_namespaces": ()}
     id: str
     object: str = "model"
     created: int
@@ -52,12 +57,14 @@ class ModelObject(BaseModel):
 
 
 class ModelListResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     object: str = "list"
     data: List[ModelObject]
 
 
 # Admin configuration
 class BackendConfig(BaseModel):
+    model_config = {"protected_namespaces": ()}
     image_ttl_minutes: int = 60
     max_concurrent_jobs: int = 2
     rate_limit_rpm: int = 60
@@ -77,6 +84,7 @@ class JobStatus(str):
 # Model Registry Schemas
 
 class ModelCreate(BaseModel):
+    model_config = {"protected_namespaces": ()}
     name: str
     model_id: str
     description: Optional[str] = None
@@ -90,6 +98,7 @@ class ModelCreate(BaseModel):
 
 
 class ModelUpdate(BaseModel):
+    model_config = {"protected_namespaces": ()}
     name: Optional[str] = None
     model_id: Optional[str] = None
     description: Optional[str] = None
@@ -103,11 +112,14 @@ class ModelUpdate(BaseModel):
 
 
 class ModelStatusUpdate(BaseModel):
+    model_config = {"protected_namespaces": ()}
     status: str  # active, maintenance, disabled
 
 
 class ModelResponse(BaseModel):
+    model_config = {"from_attributes": True}
     id: str
+    model_config = {"from_attributes": True}
     name: str
     model_id: str
     description: Optional[str] = None
@@ -121,21 +133,19 @@ class ModelResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
-    providers: list = []
-
-    class Config:
-        from_attributes = True
-
 
 class ModelProviderCreate(BaseModel):
+    model_config = {"from_attributes": True}
     provider_id: str
     provider_model_id: str
     provider_cost: float
+    model_config = {"from_attributes": True}
     platform_price: float
     max_images_supported: int = 1
 
 
 class ModelProviderUpdate(BaseModel):
+    model_config = {"protected_namespaces": ()}
     provider_model_id: Optional[str] = None
     provider_cost: Optional[float] = None
     platform_price: Optional[float] = None
@@ -144,6 +154,7 @@ class ModelProviderUpdate(BaseModel):
 
 
 class ModelProviderResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     id: str
     provider_id: str
     provider_name: str
@@ -153,24 +164,19 @@ class ModelProviderResponse(BaseModel):
     max_images_supported: int
     status: str
 
-    class Config:
-        from_attributes = True
-
 
 class ModelAnalyticsQuery(BaseModel):
+    model_config = {"from_attributes": True}
     start_date: Optional[str] = None  # YYYY-MM-DD
     end_date: Optional[str] = None    # YYYY-MM-DD
     model_id: Optional[str] = None
+    model_config = {"from_attributes": True}
 
 
 class ModelAnalyticsResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
     model_id: str
     model_name: str
     date: str  # YYYY-MM-DD
-    total_generations: int
-    total_revenue: float
     total_provider_cost: float
     profit: float
-
-    class Config:
-        from_attributes = True

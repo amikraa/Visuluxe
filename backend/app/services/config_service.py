@@ -252,8 +252,15 @@ class ConfigService:
     async def _fetch_from_db(self, key: str) -> Optional[Any]:
         """Fetch configuration value from database"""
         sb = DatabaseService.get_client()
-        response = sb.table("system_settings").select("value").eq("key", key).single().execute()
-        return response.data["value"] if response.data else None
+        if sb is None:
+            logger.warning(f"Supabase unavailable, cannot fetch config '{key}' from database")
+            return None
+        try:
+            response = sb.table("system_settings").select("value").eq("key", key).single().execute()
+            return response.data["value"] if response.data else None
+        except Exception as e:
+            logger.error(f"Failed to fetch config '{key}' from database: {e}")
+            return None
     
     def _get_from_env(self, key: str) -> Optional[Any]:
         """Get configuration value from environment variables"""
