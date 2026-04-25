@@ -2,7 +2,7 @@
 Pydantic schemas for request/response models
 OpenAI-compatible API schemas
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Literal
 from datetime import datetime
 
@@ -117,9 +117,8 @@ class ModelStatusUpdate(BaseModel):
 
 
 class ModelResponse(BaseModel):
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
     id: str
-    model_config = {"from_attributes": True}
     name: str
     model_id: str
     description: Optional[str] = None
@@ -135,11 +134,10 @@ class ModelResponse(BaseModel):
     updated_at: datetime
 
 class ModelProviderCreate(BaseModel):
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
     provider_id: str
     provider_model_id: str
     provider_cost: float
-    model_config = {"from_attributes": True}
     platform_price: float
     max_images_supported: int = 1
 
@@ -166,11 +164,10 @@ class ModelProviderResponse(BaseModel):
 
 
 class ModelAnalyticsQuery(BaseModel):
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
     start_date: Optional[str] = None  # YYYY-MM-DD
     end_date: Optional[str] = None    # YYYY-MM-DD
     model_id: Optional[str] = None
-    model_config = {"from_attributes": True}
 
 
 class ModelAnalyticsResponse(BaseModel):
